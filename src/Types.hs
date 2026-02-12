@@ -14,12 +14,6 @@ data Amount = Amount
   , currency :: String
   } deriving (Show, Eq, Generic)
 
--- | Observable financiero
-data Observable = Observable
-  { name :: String
-  , description :: Maybe String
-  } deriving (Show, Eq, Generic)
-
 -- | Resultado de una evaluación
 data EvalResult = EvalResult
   { cashflows :: [Cashflow]
