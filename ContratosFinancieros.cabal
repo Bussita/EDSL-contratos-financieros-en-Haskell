@@ -1,0 +1,74 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.38.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           ContratosFinancieros
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell#readme>
+homepage:       https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell#readme
+bug-reports:    https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell/issues
+author:         Author
+maintainer:     example@example.com
+copyright:      2026
+license:        MIT
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell
+
+library
+  exposed-modules:
+      AST
+      Parser
+      Evaluator
+      Types
+  other-modules:
+      Paths_ContratosFinancieros
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
+  build-depends:
+      base >=4.7 && <5
+    , containers >=0.6
+    , parsec >=3.1.14
+    , text >=1.2
+    , time >=1.9
+  default-language: Haskell2010
+
+executable financial-contracts-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_ContratosFinancieros
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      FinancialContracts
+    , base >=4.7 && <5
+    , containers >=0.6
+    , parsec >=3.1.14
+    , text >=1.2
+    , time >=1.9
+  default-language: Haskell2010
+
+test-suite financial-contracts-test
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  other-modules:
+      Paths_ContratosFinancieros
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      FinancialContracts
+    , base >=4.7 && <5
+    , containers >=0.6
+    , parsec >=3.1.14
+    , text >=1.2
+    , time >=1.9
+  default-language: Haskell2010

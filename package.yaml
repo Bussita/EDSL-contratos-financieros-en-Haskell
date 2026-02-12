@@ -1,0 +1,56 @@
+name:                ContratosFinancieros
+version:             0.1.0.0
+github:              "Bussita/EDSL-contratos-financieros-en-Haskell"
+license:             MIT
+author:              "Author"
+maintainer:          "example@example.com"
+copyright:           "2026"
+
+extra-source-files:
+- README.md
+
+description:         Please see the README on GitHub at <https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- parsec >= 3.1.14
+- containers >= 0.6
+- time >= 1.9
+- text >= 1.2
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - AST
+    - Parser
+    - Evaluator
+    - Types
+
+executables:
+  financial-contracts-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - ContratosFinancieros
+
+tests:
+  financial-contracts-test:
+    main:                Main.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - ContratosFinancieros
