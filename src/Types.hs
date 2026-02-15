@@ -2,8 +2,14 @@
 
 module Types where
 
-import Data.Time (UTCTime, LocalTime, TimeOfDay)
+import Data.Time (Day, fromGregorian)
 import GHC.Generics (Generic)
+
+-- | Tipo para representar una fecha
+type Date = Day
+
+-- | Tipo para representar una moneda
+data Currency = USD | EUR | ARS | GBP deriving (Show, Eq, Read)
 
 -- | Identificador para una transacción o parte
 type PartyId = String
@@ -21,7 +27,7 @@ data EvalResult = EvalResult
 
 -- | Flujo de caja
 data Cashflow = Cashflow
-  { date :: LocalTime
+  { date :: Day
   , amount :: Amount
   , from :: PartyId
   , to :: PartyId

@@ -9,7 +9,7 @@ copyright:           "2026"
 extra-source-files:
 - README.md
 
-description:         Please see the README on GitHub at <https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell#readme>
+description:         Financial Contracts EDSL in Haskell
 
 dependencies:
 - base >= 4.7 && < 5
@@ -17,6 +17,7 @@ dependencies:
 - containers >= 0.6
 - time >= 1.9
 - text >= 1.2
+- mtl
 
 ghc-options:
 - -Wall
@@ -32,6 +33,7 @@ library:
     - Parser
     - Evaluator
     - Types
+    - Utils
 
 executables:
   financial-contracts-exe:

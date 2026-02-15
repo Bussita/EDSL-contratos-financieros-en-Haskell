@@ -1,4 +1,7 @@
+module AST where
+
 import Types
+import GHC.Real (Fractional(fromRational))
 
 data Contract =
     Zero |
@@ -11,21 +14,28 @@ data Contract =
     Scale (Obs Double) Contract |
     Get Contract |
     Anytime Contract 
-    deriving Show
+    {- Quizá a futuro
+    Let String Contract |
+    IfThenElse BoolExp Contract Contract -}
+    deriving (Show, Eq)
 
 data Obs a =
     Konst a |
-    Lift1 (a -> a) (Obs a) |
-    Lift2 (a -> a -> a) (Obs a) (Obs a) |
-    External String 
-    deriving Show
+    Add (Obs a) (Obs a) |
+    Sub (Obs a) (Obs a) |
+    Mul (Obs a) (Obs a) |
+    Div (Obs a) (Obs a) |
+    Neg (Obs a)         |
+    External String deriving (Show, Eq, Read)
 
-
-
-instance Num a => Num (Observable a) where
-    (+)         = Lift2 (+)
-    (*)         = Lift2 (*)
-    (-)         = Lift2 (-)
-    abs         = Lift1 abs
-    signum      = Lift1 signum
+instance Num a => Num (Obs a) where
+    (+)         = Add
+    (*)         = Mul
+    (-)         = Sub
+    abs         = error "No implementado"
+    signum      = error "No implementado"
     fromInteger = Konst . fromInteger
+
+instance Fractional a => Fractional (Obs a) where
+    (/) = Div
+    fromRational = Konst . fromRational

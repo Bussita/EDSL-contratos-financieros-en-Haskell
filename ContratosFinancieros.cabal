@@ -6,7 +6,7 @@ cabal-version: 1.12
 
 name:           ContratosFinancieros
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell#readme>
+description:    Financial Contracts EDSL in Haskell
 homepage:       https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell#readme
 bug-reports:    https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell/issues
 author:         Author
@@ -27,6 +27,7 @@ library
       Parser
       Evaluator
       Types
+      Utils
   other-modules:
       Paths_ContratosFinancieros
   hs-source-dirs:
@@ -35,6 +36,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers >=0.6
+    , mtl
     , parsec >=3.1.14
     , text >=1.2
     , time >=1.9
@@ -48,9 +50,10 @@ executable financial-contracts-exe
       app
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      FinancialContracts
+      ContratosFinancieros
     , base >=4.7 && <5
     , containers >=0.6
+    , mtl
     , parsec >=3.1.14
     , text >=1.2
     , time >=1.9
@@ -65,9 +68,10 @@ test-suite financial-contracts-test
       test
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      FinancialContracts
+      ContratosFinancieros
     , base >=4.7 && <5
     , containers >=0.6
+    , mtl
     , parsec >=3.1.14
     , text >=1.2
     , time >=1.9
