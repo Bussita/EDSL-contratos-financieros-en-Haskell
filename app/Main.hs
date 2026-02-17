@@ -31,22 +31,28 @@ main' = do
   args <- lift getArgs
   today <- lift $ utctDay <$> getCurrentTime
   
+  let defaultQuotes = Map.fromList
+        [ ("OIL", 80.5)
+        , ("AAPL", 150.0)
+        , ("USD_ARS", 1000.0)
+        ]
+  
   let defaultEnv = Env 
         { fechaHoy    = today
-        , getQuote     = oraculoMock  -- Función falsa para pruebas
+        , getQuote     = makeOracle defaultQuotes
         , yo           = "Bussa"
         , contraparte  = "Banco"
         }
-        
-  let initialState = S { inter = False, lfile = "", fEnv = defaultEnv, cStore = Map.empty }
+  
+  let initialState = S { inter = False, lfile = "", fEnv = defaultEnv, cStore = Map.empty, qStore = defaultQuotes }
   
   readevalprint args initialState
 
-oraculoMock :: String -> Double
-oraculoMock "OIL"  = 80.5
-oraculoMock "AAPL" = 150.0
-oraculoMock "USD_ARS" = 1000.0
-oraculoMock _      = 1.0
+-- | Construir función oráculo a partir del mapa de cotizaciones
+makeOracle :: Map.Map String Double -> (String -> Double)
+makeOracle quotes name = case Map.lookup name quotes of
+    Just v  -> v
+    Nothing -> 1.0  -- Valor por defecto para observables desconocidos
 
 iname, iprompt :: String
 iname = "EDSL de Contratos Financieros"
@@ -60,6 +66,7 @@ data State = S
   , lfile  :: String
   , fEnv   :: Env
   , cStore :: Evaluator.ContractStore  -- Diccionario con las variables de contrato
+  , qStore :: Map.Map String Double    -- Cotizaciones del oráculo
   }
 
 readevalprint :: [String] -> State -> InputT IO ()
@@ -92,6 +99,7 @@ data Command = EvalContract String
              | PrintPP String
              | LoadFile String
              | ShowStore
+             | SetQuote String
              | Quit
              | Help
              | Noop
@@ -172,6 +180,32 @@ handleCommand state cmd = case cmd of
                       when (not (null cashflows)) $ putStr $ ppCashflows cashflows
                     return (Just state { cStore = newStore })
     
+  SetQuote s -> do
+    let ws = words s
+    case ws of
+      [] -> do
+        lift $ do
+          let quotes = qStore state
+          if Map.null quotes
+            then putStrLn "(sin cotizaciones definidas)"
+            else do
+              putStrLn "Cotizaciones actuales:"
+              mapM_ (\(name, v) -> putStrLn $ "  " ++ name ++ " = " ++ show v)
+                    (Map.toList quotes)
+        return (Just state)
+      [name, val] -> case reads val of
+        [(v, "")] -> do
+          let newQuotes = Map.insert name v (qStore state)
+          let newEnv = (fEnv state) { getQuote = makeOracle newQuotes }
+          lift $ putStrLn $ "Cotización actualizada: " ++ name ++ " = " ++ show v
+          return (Just state { qStore = newQuotes, fEnv = newEnv })
+        _ -> do
+          lift $ putStrLn $ "Valor inválido: " ++ val ++ ". Debe ser un número."
+          return (Just state)
+      _ -> do
+        lift $ putStrLn "Uso: :quote <nombre> <valor>  (ej: :quote OIL 85.0)"
+        return (Just state)
+
   EvalComm s -> do
     case parse parserComm "<interactive>" s of
       Left err -> do
@@ -218,13 +252,14 @@ isCommentOrEmpty s =
 
 commands :: [InteractiveCommand]
 commands =
-  [ Cmd [":ast"]   "<exp>"     PrintAST     "Muestra el AST de un contrato"
-  , Cmd [":pp"]    "<exp>"     PrintPP      "Pretty print de un contrato/comando"
-  , Cmd [":eval"]  "<exp>"     EvalContract "Evalúa un contrato y muestra flujos de caja"
-  , Cmd [":load"]  "<archivo>" LoadFile     "Cargar un archivo .fin"
-  , Cmd [":store"] ""          (const ShowStore) "Mostrar contratos definidos"
-  , Cmd [":quit"]  ""          (const Quit) "Salir del intérprete"
-  , Cmd [":help", ":?"] ""    (const Help) "Mostrar esta lista de comandos"
+  [ Cmd [":ast"]    "<exp>"          PrintAST     "Muestra el AST de un contrato"
+  , Cmd [":pp"]     "<exp>"          PrintPP      "Pretty print de un contrato/comando"
+  , Cmd [":eval"]   "<exp>"          EvalContract "Evalúa un contrato y muestra flujos de caja"
+  , Cmd [":load"]   "<archivo>"      LoadFile     "Cargar un archivo .fin"
+  , Cmd [":store"]  ""               (const ShowStore)  "Mostrar contratos definidos"
+  , Cmd [":quote"]  "[<nombre> <val>]" SetQuote   "Ver/definir cotización (ej: :quote OIL 85.0)"
+  , Cmd [":quit"]   ""               (const Quit) "Salir del intérprete"
+  , Cmd [":help", ":?"] ""           (const Help) "Mostrar esta lista de comandos"
   ]
 
 helpTxt :: [InteractiveCommand] -> String

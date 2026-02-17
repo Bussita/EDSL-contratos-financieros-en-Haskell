@@ -1,0 +1,686 @@
+\documentclass[a4paper, 12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+
+% Estilo para código Haskell
+\definecolor{codebg}{rgb}{0.95,0.95,0.95}
+\definecolor{codegreen}{rgb}{0,0.5,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{codeblue}{rgb}{0.0,0.0,0.7}
+
+\lstdefinestyle{haskellstyle}{
+    backgroundcolor=\color{codebg},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codeblue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    frame=single,
+    language=Haskell,
+    morekeywords={module, where, import, qualified, data, type, newtype, deriving, instance, case, of, let, in, if, then, else, do, return, class},
+    literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1 {→}{{$\rightarrow$}}1
+}
+
+\lstdefinestyle{finstyle}{
+    backgroundcolor=\color{codebg},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codeblue}\bfseries,
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    frame=single,
+    morekeywords={let, zero, one, give, and, or, truncate, then, scale, get, anytime},
+    morecomment=[l]{--},
+    literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1 {→}{{$\rightarrow$}}1
+}
+
+\lstdefinestyle{replstyle}{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    frame=single,
+    literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1 {→}{{$\rightarrow$}}1
+}
+
+\lstset{style=haskellstyle}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\begin{document}
+
+% ============================================================
+% Portada
+% ============================================================
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\Large \textbf{Universidad Nacional de Rosario}}\\[0.3cm]
+    {\large Facultad de Ciencias Exactas, Ingeniería y Agrimensura}\\[2cm]
+    
+    {\large \textbf{Análisis de Lenguajes de Programación}}\\[0.2cm]
+    {\large R-322}\\[2cm]
+    
+    {\Large \textbf{Informe Trabajo Práctico Final}}\\[0.5cm]
+    {\LARGE \textbf{EDSL de Contratos Financieros en Haskell}}\\[3cm]
+    
+    {\large \textbf{Alumno}}\\[0.2cm]
+    {\large Bussanich, Santiago --- Legajo: 6488/2}\\[3cm]
+    
+    {\large 17 de Febrero, 2026}
+    
+    \vfill
+\end{titlepage}
+
+% ============================================================
+% 1. Descripción del proyecto
+% ============================================================
+\section{Descripción del proyecto.}
+
+\subsection{Introducción}
+
+\subsubsection{Contratos financieros}
+
+Un contrato financiero es un acuerdo legal entre dos o más partes que establece obligaciones y derechos sobre flujos de dinero futuros. Estos contratos son fundamentales en los mercados financieros y abarcan instrumentos como bonos, préstamos, swaps de monedas, opciones y derivados.
+
+La diversidad y complejidad de los contratos financieros los convierte en un dominio ideal para ser modelado mediante lenguajes formales. De manera análoga a como los lenguajes de programación permiten describir computaciones, un lenguaje de contratos financieros permite describir de forma precisa y composicional las obligaciones monetarias entre partes.
+
+En su paper \textit{``Composing Contracts: An Adventure in Financial Engineering''} \cite{peytonjones2000}, Peyton Jones, Eber y Seward proponen modelar contratos financieros como un tipo de datos algebraico, donde contratos complejos se construyen a partir de combinadores simples. Los combinadores principales son:
+
+\begin{itemize}[nosep]
+    \item \texttt{zero}: un contrato sin obligaciones.
+    \item \texttt{one c}: recibir una unidad de la moneda \texttt{c}.
+    \item \texttt{give c}: invertir los roles en un contrato (quien paga se convierte en quien cobra y viceversa).
+    \item \texttt{and c1 c2}: adquirir ambos contratos simultáneamente.
+    \item \texttt{or c1 c2}: elegir el contrato más favorable.
+    \item \texttt{then c1 c2}: intentar \texttt{c1} y, si no produce flujos, usar \texttt{c2} como respaldo.
+    \item \texttt{scale o c}: escalar los montos del contrato por un observable \texttt{o}.
+    \item \texttt{truncate d c}: limitar la vigencia del contrato hasta la fecha \texttt{d}.
+    \item \texttt{get c}: adquirir el contrato hoy.
+    \item \texttt{anytime c}: ejercer el contrato en el momento que convenga.
+\end{itemize}
+
+Este enfoque composicional permite construir contratos arbitrariamente complejos a partir de piezas simples, de la misma manera en que un programa se construye a partir de expresiones y sentencias.
+
+\subsubsection{Observables}
+
+Los observables representan valores que pueden variar en el tiempo y que son consultados durante la evaluación de un contrato. Típicamente se trata de precios de mercado, tasas de cambio, o índices financieros. En nuestro lenguaje, los observables se utilizan dentro del constructor \texttt{scale} para determinar el factor de escala que se aplica a los flujos de caja generados por un contrato.
+
+Un observable puede ser una constante numérica (por ejemplo, \texttt{1000.0}) o un valor externo que se obtiene de un oráculo (por ejemplo, \texttt{OIL} para el precio del petróleo). Además, es posible combinar observables mediante operaciones aritméticas (\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}).
+
+\subsection{Objetivo}
+
+En este trabajo desarrollamos un \textbf{Embedded Domain Specific Language} (EDSL) implementado en Haskell para modelar y evaluar contratos financieros. El lenguaje, al que llamamos \textit{Financial Contracts EDSL}, permite:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Definir} contratos financieros de forma declarativa y composicional.
+    \item \textbf{Parsear} descripciones de contratos a partir de texto, utilizando combinadores de Parsec.
+    \item \textbf{Evaluar} contratos para generar flujos de caja (\textit{cashflows}) concretos.
+    \item \textbf{Componer} contratos de forma modular usando los combinadores del paper.
+    \item \textbf{Nombrar} contratos con \texttt{let} y reutilizarlos como variables.
+    \item \textbf{Pretty-printing} contratos con paréntesis mínimos respetando precedencias.
+\end{enumerate}
+
+El lenguaje se presenta con un REPL interactivo que permite definir, componer, evaluar y visualizar contratos financieros de forma inmediata. Se trata de un primer acercamiento a la implementación del paper de Peyton Jones et al., con simplificaciones en la evaluación de \texttt{or}, \texttt{then}, \texttt{get} y \texttt{anytime}.
+
+% ============================================================
+% 2. El lenguaje
+% ============================================================
+\section{El lenguaje.}
+
+\subsection{Sintaxis abstracta}
+
+La sintaxis abstracta del lenguaje se divide en tres categorías principales: contratos, observables y comandos.
+
+\begin{center}
+\begin{tabular}{r c l}
+\textit{contract} & ::= & \texttt{zero} \\
+    & $|$ & \texttt{one} \textit{currency} \\
+    & $|$ & \texttt{give} \textit{contract} \\
+    & $|$ & \textit{contract} \texttt{and} \textit{contract} \\
+    & $|$ & \textit{contract} \texttt{or} \textit{contract} \\
+    & $|$ & \textit{contract} \texttt{then} \textit{contract} \\
+    & $|$ & \texttt{scale} \textit{obs} \textit{contract} \\
+    & $|$ & \texttt{truncate} \textit{date} \textit{contract} \\
+    & $|$ & \texttt{get} \textit{contract} \\
+    & $|$ & \texttt{anytime} \textit{contract} \\
+    & $|$ & \textit{variable} \\[10pt]
+\textit{obs} & ::= & \textit{number} \\
+    & $|$ & \textit{identifier} \\
+    & $|$ & \textit{obs} \texttt{+} \textit{obs} \\
+    & $|$ & \textit{obs} \texttt{-} \textit{obs} \\
+    & $|$ & \textit{obs} \texttt{*} \textit{obs} \\
+    & $|$ & \textit{obs} \texttt{/} \textit{obs} \\
+    & $|$ & \texttt{-} \textit{obs} \\[10pt]
+\textit{comm} & ::= & \texttt{let} \textit{variable} \texttt{=} \textit{contract} \\
+    & $|$ & \textit{comm} \texttt{;} \textit{comm} \\
+    & $|$ & \textit{contract} \\[10pt]
+\textit{currency} & ::= & \texttt{USD} $|$ \texttt{EUR} $|$ \texttt{ARS} $|$ \texttt{GBP} \\[5pt]
+\textit{date} & ::= & \texttt{YYYY-MM-DD} \\
+\end{tabular}
+\end{center}
+
+\subsection{Sintaxis concreta}
+
+La sintaxis concreta sigue la gramática de precedencias implementada en el parser.
+
+\begin{center}
+\begin{tabular}{r c l}
+\textit{digit} & ::= & \texttt{'0'} $|$ \texttt{'1'} $|$ $\cdots$ $|$ \texttt{'9'} \\
+\textit{nat} & ::= & \textit{digit} $|$ \textit{digit nat} \\
+\textit{float} & ::= & \textit{nat} \texttt{'.'} \textit{nat} \\
+\textit{identifier} & ::= & \textit{letter} \textit{rest} \\
+\textit{rest} & ::= & \textit{letter} \textit{rest} $|$ \textit{digit} \textit{rest} $|$ $\epsilon$ \\[10pt]
+
+\textit{comm} & ::= & \textit{singleComm}  \texttt{';'} \textit{comm} $|$ \textit{singleComm} \\
+\textit{singleComm} & ::= & \textit{assign} $|$ \textit{evalComm} \\
+\textit{assign} & ::= & \texttt{'let'} \textit{identifier} \texttt{'='} \textit{contract} \\
+\textit{evalComm} & ::= & \textit{contract} \\[10pt]
+
+\textit{contract} & ::= & \textit{term} \texttt{'or'} \textit{contract} $|$ \textit{term} \\
+\textit{term} & ::= & \textit{factor}  \texttt{'and'} \textit{term} $|$ \textit{factor} \\
+\textit{factor} & ::= & \textit{prefix}  \texttt{'then'} \textit{factor} $|$ \textit{prefix} \\
+\textit{prefix} & ::= & \texttt{'give'} \textit{prefix} \\
+    & $|$ & \texttt{'get'} \textit{prefix} \\
+    & $|$ & \texttt{'anytime'} \textit{prefix} \\
+    & $|$ & \texttt{'scale'} \textit{observable} \textit{prefix} \\
+    & $|$ & \texttt{'truncate'} \textit{date} \textit{prefix} \\
+    & $|$ & \textit{atom} \\
+\textit{atom} & ::= & \texttt{'('} \textit{contract} \texttt{')'} $|$ \texttt{'zero'} $|$ \texttt{'one'} \textit{currency} $|$ \textit{identifier} \\[10pt]
+
+\textit{observable} & ::= & \textit{obsTerm} \texttt{'+'} \textit{obsTerm} $|$ \textit{obsTerm} \texttt{'-'} \textit{obsTerm} $|$ \textit{obsTerm}\\
+\textit{obsTerm} & ::= & \textit{obsAtom} \texttt{'*'} \textit{obsAtom} $|$ \textit{obsAtom} \texttt{'/'} \textit{obsAtom} $|$ \textit{obsAtom} \\
+\textit{obsAtom} & ::= & \texttt{'('} \textit{observable} \texttt{')'} $|$ \textit{float} $|$ \textit{nat} $|$ \textit{identifier} \\[10pt]
+
+\textit{date} & ::= & \textit{digit}$^4$ \texttt{'-'} \textit{digit}$^2$ \texttt{'-'} \textit{digit}$^2$ \\
+\textit{currency} & ::= & \texttt{'USD'} $|$ \texttt{'EUR'} $|$ \texttt{'ARS'} $|$ \texttt{'GBP'} \\
+\end{tabular}
+\end{center}
+
+\subsection{Ejemplos}
+
+Para comprender mejor la semántica del lenguaje, veamos algunos ejemplos concretos. El contrato financiero más básico que podemos expresar es un \textit{zero-coupon bond}: un instrumento que promete un pago fijo en una fecha futura.
+
+\begin{lstlisting}[style=finstyle, caption={Zero-coupon bond (basico.fin)}]
+-- Ejemplo 1: Contratos basicos
+-- Un zero-coupon bond: recibir 1000 USD antes del 2027-01-01
+
+-- Definimos un pago simple
+let pago = one USD;
+
+-- Le damos escala
+let bono = scale 1000.0 pago;
+
+-- Lo limitamos en el tiempo
+let zcb = truncate 2027-01-01 bono;
+
+-- Evaluamos
+zcb
+\end{lstlisting}
+
+Este programa define un contrato que genera un pago de 1000 USD con vencimiento al 1 de enero de 2027. Podemos observar varias características del lenguaje: la definición de contratos con \texttt{let}, la composición mediante \texttt{scale} y \texttt{truncate}, y la evaluación final al escribir simplemente el nombre del contrato.
+
+Un ejemplo más interesante es un \textit{currency swap}, donde una parte paga en una moneda y recibe en otra:
+
+\begin{lstlisting}[style=finstyle, caption={Currency swap (swap.fin)}]
+-- Ejemplo 2: Swap de monedas
+-- Un currency swap: yo pago USD y recibo EUR
+
+let pagoUSD = give one USD;
+let cobroEUR = one EUR;
+
+-- El swap es la combinacion de ambos
+let swap = pagoUSD and cobroEUR;
+
+-- Escalamos a cantidades reales
+scale 1000.0 swap
+\end{lstlisting}
+
+Aquí utilizamos \texttt{give} para invertir la dirección del pago y \texttt{and} para combinar ambas obligaciones. Finalmente, \texttt{scale 1000.0} amplifica los montos a cantidades significativas.
+
+Veamos un ejemplo que modela un préstamo con interés:
+
+\begin{lstlisting}[style=finstyle, caption={Préstamo con interés (prestamo.fin)}]
+-- Ejemplo 8: Prestamo simple
+-- Modelar un prestamo con interes.
+
+-- El banco me presta 10000 USD hoy
+let desembolso = scale 10000.0 one USD;
+
+-- Yo le devuelvo al banco (give = yo pago)
+-- Capital + 10% de interes = 11000 USD, con vencimiento
+let devolucion = give truncate 2027-01-01 scale 11000.0 one USD;
+
+-- El prestamo completo: recibo ahora, pago despues
+let prestamo = desembolso and devolucion;
+
+prestamo
+\end{lstlisting}
+
+En este caso, el contrato modela un préstamo donde el banco desembolsa 10000 USD y el tomador devuelve 11000 USD (capital + 10\% de interés) antes de una fecha límite. El combinador \texttt{give} invierte el rol en la devolución: ahora es el usuario quien paga al banco. El resultado de la evaluación genera dos flujos de caja: uno entrante (el desembolso) y uno saliente (la devolución).
+
+% ============================================================
+% 3. Manual de uso e instalación
+% ============================================================
+\section{Manual de uso e instalación.}
+
+Ya vimos en la descripción del lenguaje cómo podemos escribir programas en el EDSL. Veamos ahora cómo podemos efectivamente ejecutarlos.
+
+\subsection{Compilación}
+
+Para compilar el proyecto, debemos ejecutar el comando
+
+\begin{lstlisting}[style=replstyle, numbers=none]
+stack build
+\end{lstlisting}
+
+desde el directorio raíz del proyecto. Esto descargará las dependencias necesarias (Parsec, Haskeline, etc.) y compilará el intérprete.
+
+\subsection{Ejecución del REPL}
+
+Una vez compilado, podemos iniciar el REPL interactivo con:
+
+\begin{lstlisting}[style=replstyle, numbers=none]
+stack run
+\end{lstlisting}
+
+Esto nos presenta el intérprete con el prompt \texttt{Fin>}, donde podemos escribir contratos, comandos y utilizar las directivas del sistema.
+
+\subsection{Uso del REPL}
+
+\begin{lstlisting}[style=replstyle, numbers=none, caption={Sesión de ejemplo en el REPL}]
+Interprete de EDSL de Contratos Financieros.
+Escriba :? para recibir ayuda.
+Fin> one USD
+Fecha        Monto          Desde -> Hacia
+-----------------------------------------
+2026-02-17  1 USD  Banco -> Bussa
+
+Fin> let swap = give one USD and one EUR
+Contrato(s) asignado(s) correctamente.
+
+Fin> scale 1000.0 swap
+Fecha        Monto          Desde -> Hacia
+-----------------------------------------
+2026-02-17  1000 USD  Bussa -> Banco
+2026-02-17  1000 EUR  Banco -> Bussa
+
+Fin> :quote
+Cotizaciones actuales:
+  AAPL = 150.0
+  OIL = 80.5
+  USD_ARS = 1000.0
+
+Fin> :quote OIL 90.0
+Cotización actualizada: OIL = 90.0
+
+Fin> :load Ejemplos/basico.fin
+Archivo Ejemplos/basico.fin cargado correctamente.
+Fecha        Monto          Desde -> Hacia
+-----------------------------------------
+2026-02-17  1000 USD  Banco -> Bussa
+
+Fin> :store
+  zcb = truncate 2027-01-01 scale 1000.0 one USD
+
+Fin> :quit
+Saliendo del interprete financiero.
+\end{lstlisting}
+
+\subsection{Comandos disponibles}
+
+\begin{center}
+\begin{tabular}{l l}
+\toprule
+\textbf{Comando} & \textbf{Descripción} \\
+\midrule
+\texttt{<contrato>} & Evaluar un contrato/comando y mostrar cashflows \\
+\texttt{let x = <contrato>} & Asignar un alias a un contrato \\
+\texttt{c1 ; c2} & Secuenciar comandos \\
+\texttt{:ast <exp>} & Mostrar el AST de un contrato \\
+\texttt{:pp <exp>} & Pretty print de un contrato \\
+\texttt{:eval <exp>} & Evaluar un contrato directamente \\
+\texttt{:load <archivo>} & Cargar un archivo \texttt{.fin} \\
+\texttt{:store} & Mostrar contratos definidos \\
+\texttt{:quote} & Mostrar cotizaciones del oráculo \\
+\texttt{:quote <nombre> <val>} & Definir/actualizar una cotización \\
+\texttt{:help} o \texttt{:?} & Mostrar ayuda \\
+\texttt{:quit} & Salir del intérprete \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Archivos \texttt{.fin}}
+
+Es posible escribir programas en archivos con extensión \texttt{.fin} y cargarlos desde el REPL con \texttt{:load}. El directorio \texttt{Ejemplos/} contiene 11 archivos de ejemplo que cubren distintos escenarios financieros. La sintaxis de estos archivos sigue las siguientes convenciones:
+
+\begin{itemize}[nosep]
+    \item Los comentarios se escriben con \texttt{-{}-} al inicio de la línea.
+    \item Las líneas vacías se ignoran.
+    \item Los comandos se separan explícitamente con \texttt{;}.
+    \item La última expresión (la evaluación) no lleva \texttt{;} al final.
+\end{itemize}
+
+% ============================================================
+% 4. Organización de los archivos
+% ============================================================
+\section{Organización de los archivos.}
+
+El trabajo se encuentra dividido en los siguientes directorios principales:
+
+\textbf{src/.} Contiene el código fuente principal del lenguaje. En particular, podemos encontrar:
+\begin{itemize}[nosep]
+    \item \textbf{AST.hs.} Define los tipos de datos algebraicos del lenguaje: \texttt{Contract}, \texttt{Comm} y \texttt{Obs}.
+    \item \textbf{Types.hs.} Define los tipos base utilizados en la evaluación: \texttt{Currency}, \texttt{Amount}, \texttt{Cashflow}, \texttt{Env} y \texttt{EvalError}.
+    \item \textbf{Monads.hs.} Define la mónada \texttt{Eval}, construida a mano, que combina los efectos de Reader, Writer y Either.
+    \item \textbf{Utils.hs.} Funciones auxiliares monádicas: \texttt{ask}, \texttt{throw}, \texttt{localEnv}, \texttt{censor} y el combinador \texttt{zcb}.
+    \item \textbf{Parser.hs.} Implementa el parser del lenguaje utilizando Parsec, con gramática de precedencias para contratos y observables.
+    \item \textbf{Evaluator.hs.} Implementa el evaluador de contratos y comandos, incluyendo la sustitución de variables (\texttt{substContract}) con detección de ciclos.
+    \item \textbf{PrettyPrinter.hs.} Pretty printer con niveles de precedencia que minimiza el uso de paréntesis.
+\end{itemize}
+
+\textbf{app/.} Contiene un único archivo, \texttt{Main.hs}, donde se encuentra el REPL interactivo construido con Haskeline. En este archivo se definen los comandos del intérprete, el manejo de estado (store de contratos, mapa de cotizaciones del oráculo, entorno de evaluación), y la carga de archivos \texttt{.fin}.
+
+\textbf{Ejemplos/.} Es el directorio donde se almacenan los archivos de ejemplo \texttt{.fin}. Contiene 11 archivos que cubren escenarios como bonos, swaps, préstamos, derivados, coberturas y composición de contratos.
+
+Los demás archivos y directorios que pueden encontrarse en el directorio raíz (\texttt{stack.yaml}, \texttt{package.yaml}, \texttt{.stack-work/}, etc.) son generados y utilizados por la herramienta Stack.
+
+% ============================================================
+% 5. Decisiones de diseño y observaciones
+% ============================================================
+\section{Decisiones de diseño y observaciones.}
+
+\subsection{El AST}
+
+Los tipos de datos del lenguaje están definidos en \texttt{AST.hs} como tipos algebraicos de Haskell. El tipo principal \texttt{Contract} representa los combinadores del paper:
+
+\begin{lstlisting}[caption={Tipo de datos Contract (AST.hs)}]
+data Contract =
+    Zero |
+    One Currency |
+    Give Contract |
+    And Contract Contract |
+    Or Contract Contract |
+    Truncate Date Contract |
+    Then Contract Contract |
+    Scale (Obs Double) Contract |
+    Get Contract |
+    Anytime Contract |
+    Var String
+    deriving (Show, Eq)
+\end{lstlisting}
+
+El constructor \texttt{Var String} no forma parte del paper original, sino que fue añadido para soportar el sistema de variables (aliasing). Cuando el usuario escribe \texttt{let swap = give one USD and one EUR}, el parser genera un \texttt{Assign "swap" (And (Give (One USD)) (One EUR))}, y posteriores referencias a \texttt{swap} se parsean como \texttt{Var "swap"}.
+
+Los comandos se representan con el tipo \texttt{Comm}:
+
+\begin{lstlisting}[caption={Tipo de datos Comm (AST.hs)}]
+data Comm =
+    Assign String Contract
+  | Seq Comm Comm
+  | Run Contract
+  deriving (Show, Eq)
+\end{lstlisting}
+
+Finalmente, los observables se representan como un tipo paramétrico:
+
+\begin{lstlisting}[caption={Tipo de datos Obs (AST.hs)}]
+data Obs a =
+    Konst a |
+    Add (Obs a) (Obs a) |
+    Sub (Obs a) (Obs a) |
+    Mul (Obs a) (Obs a) |
+    Div (Obs a) (Obs a) |
+    Neg (Obs a)         |
+    External String
+    deriving (Show, Eq, Read)
+\end{lstlisting}
+
+Hemos implementado las instancias de \texttt{Num} y \texttt{Fractional} para \texttt{Obs a}, lo cual permite escribir expresiones aritméticas directamente sobre observables utilizando la sintaxis natural de Haskell a nivel de la implementación.
+
+\subsection{Parsing}
+
+Para el parseo utilizamos la librería Parsec \cite{parsec}, que ya habíamos utilizado en otros trabajos de la materia. La sintaxis del lenguaje es relativamente simple y alternativas como Happy resultaban innecesariamente complejas para nuestro alcance.
+
+La gramática de contratos se implementó con una jerarquía de precedencias para resolver la ambigüedad de los operadores infijos:
+
+\begin{center}
+\begin{tabular}{c l l}
+\toprule
+\textbf{Precedencia} & \textbf{Operador} & \textbf{Asociatividad} \\
+\midrule
+0 (más baja) & \texttt{or} & izquierda \\
+1 & \texttt{and} & izquierda \\
+2 & \texttt{then} & izquierda \\
+3 & prefijos (\texttt{give}, \texttt{scale}, \texttt{truncate}, ...) & --- \\
+4 (más alta) & átomos (\texttt{zero}, \texttt{one}, variables, paréntesis) & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Esta jerarquía se implementa con funciones mutuamente recursivas utilizando \texttt{chainl1} de Parsec:
+
+\begin{lstlisting}[caption={Jerarquía de precedencias en el parser}]
+parserContract :: Parser Contract
+parserContract = chainl1 parserTerm (reserved "or" >> return Or)
+
+parserTerm :: Parser Contract
+parserTerm = chainl1 parserFactor (reserved "and" >> return And)
+
+parserFactor :: Parser Contract
+parserFactor = chainl1 parserPrefix (reserved "then" >> return Then)
+\end{lstlisting}
+
+De manera similar, los observables tienen su propia jerarquía: suma/resta en el nivel más bajo, multiplicación/división en el nivel intermedio, y átomos (constantes, externos, paréntesis) en el nivel más alto.
+
+\subsection{La mónada Eval}
+
+Lo más relevante en cuanto a la evaluación recae en la mónada definida para ello, \texttt{Eval}:
+
+\begin{lstlisting}[caption={Definición de la mónada Eval (Monads.hs)}]
+newtype Eval a = Eval {
+    runEval :: Env -> Either EvalError (a, [Cashflow])
+}
+\end{lstlisting}
+
+Esta mónada combina tres efectos:
+
+\begin{itemize}
+    \item \textbf{Reader} (\texttt{Env}): acceso de solo lectura al entorno de evaluación, que contiene la fecha actual, la función oráculo, y las identidades de las partes del contrato.
+    \item \textbf{Writer} (\texttt{[Cashflow]}): acumulación de flujos de caja generados durante la evaluación.
+    \item \textbf{Either} (\texttt{EvalError}): manejo de errores (división por cero, variables no resueltas, referencias cíclicas, etc.).
+\end{itemize}
+
+La instancia de \texttt{Monad} para \texttt{Eval} propaga errores y concatena cashflows:
+
+\begin{lstlisting}[caption={Instancia de Monad para Eval}]
+instance Monad Eval where
+    return = pure
+    (Eval h) >>= f = Eval (\env ->
+        case h env of
+            Left err -> Left err
+            Right (a, cfs) ->
+                case runEval (f a) env of
+                    Left err' -> Left err'
+                    Right (b, cfs') -> Right (b, cfs ++ cfs'))
+\end{lstlisting}
+
+Las funciones auxiliares \texttt{ask}, \texttt{throw}, \texttt{localEnv}, \texttt{censor} y \texttt{cashflowRegister} en \texttt{Utils.hs} abstraen el acceso al entorno, el lanzamiento de errores, la modificación local del entorno, la transformación de cashflows, y el registro de un flujo de caja respectivamente. Es esta mónada junto con estas funciones lo que simplifica significativamente la escritura del evaluador y permite modificarlo fácilmente.
+
+\subsection{El evaluador}
+
+El evaluador se divide en tres funciones principales:
+
+\textbf{\texttt{evalContract}.} Evalúa un contrato dentro de la mónada \texttt{Eval}, generando cashflows. Los casos más interesantes son:
+
+\begin{itemize}
+    \item \texttt{Give}: utiliza \texttt{localEnv} para intercambiar \texttt{yo} y \texttt{contraparte} en el entorno, invirtiendo la dirección de los pagos.
+    \item \texttt{Or}: evalúa ambas ramas y elige la que maximiza el valor neto para la parte ``yo'' (heurística simplificada).
+    \item \texttt{Then}: evalúa la primera rama; si no genera cashflows, pasa a la segunda (mecanismo de fallback).
+    \item \texttt{Scale}: evalúa el observable, y usa \texttt{censor} para multiplicar los montos de todos los cashflows por el factor obtenido.
+    \item \texttt{Truncate}: usa \texttt{censor} para filtrar los cashflows cuya fecha exceda el límite.
+\end{itemize}
+
+\textbf{\texttt{evalObs}.} Evalúa un observable aritmético. Soporta constantes, valores externos (obtenidos mediante la función oráculo del entorno), y las cuatro operaciones aritméticas. La división por cero se detecta y reporta como error.
+
+\textbf{\texttt{evalComm}.} Evalúa un comando, propagando el \texttt{ContractStore} (un \texttt{Map String Contract}). Los tres constructores se manejan así:
+\begin{itemize}[nosep]
+    \item \texttt{Assign}: almacena el contrato en el store \textbf{sin resolver variables}; la resolución se difiere al momento de la evaluación, lo que permite detectar ciclos.
+    \item \texttt{Run}: resuelve las variables con \texttt{substContract} y evalúa el contrato, generando cashflows.
+    \item \texttt{Seq}: ejecuta secuencialmente, propagando el store actualizado.
+\end{itemize}
+
+\subsection{Sustitución de variables y detección de ciclos}
+
+El sistema de variables se implementa mediante la función \texttt{substContract}, que recorre recursivamente el contrato y reemplaza cada \texttt{Var name} por el contrato correspondiente del \texttt{ContractStore}. Esta resolución se realiza \textbf{antes} de la evaluación (al ejecutar un \texttt{Run} o \texttt{:eval}), lo que permite mantener la mónada \texttt{Eval} simple, sin necesidad de incorporar un efecto de estado adicional para el store.
+
+Para evitar ciclos infinitos (por ejemplo, \texttt{let x = x} o cadenas indirectas como \texttt{let a = b; let b = a}), la función mantiene un \texttt{Set String} con las variables ya visitadas durante la resolución. Si se encuentra una variable que ya fue visitada, se reporta un error de referencia cíclica:
+
+\begin{lstlisting}[caption={Sustitución de variables con detección de ciclos (Evaluator.hs)}]
+substContract :: ContractStore -> Contract
+              -> Either EvalError Contract
+substContract store = go Set.empty
+  where
+    go visited (Var name)
+        | Set.member name visited =
+            Left (EvalMsg $
+              "Referencia cíclica detectada en variable: "
+              ++ name)
+        | otherwise = case Map.lookup name store of
+            Just c  -> go (Set.insert name visited) c
+            Nothing -> Left (EvalMsg $
+              "Contrato no definido: " ++ name)
+    go visited (Give c)    = Give <$> go visited c
+    go visited (And c1 c2) =
+        And <$> go visited c1 <*> go visited c2
+    -- ... (análogamente para los demás constructores)
+\end{lstlisting}
+
+Es importante notar que el comando \texttt{Assign} almacena el contrato tal cual, sin resolver variables. Esto permite que las definiciones sean ``lazy'': un contrato puede hacer referencia a variables que aún no fueron definidas al momento de la asignación, siempre que estén definidas cuando se evalúe.
+
+\subsection{Oráculo configurable}
+
+El entorno de evaluación incluye una función \texttt{getQuote :: String -> Double} que actúa como oráculo para los observables externos (por ejemplo, el precio de \texttt{OIL} o la tasa de cambio \texttt{USD\_ARS}). En lugar de utilizar una función hardcodeada, el oráculo se construye a partir de un mapa de cotizaciones (\texttt{Map String Double}) almacenado en el estado del REPL:
+
+\begin{lstlisting}[caption={Construcción del oráculo (Main.hs)}]
+makeOracle :: Map String Double -> (String -> Double)
+makeOracle quotes name = case Map.lookup name quotes of
+    Just v  -> v
+    Nothing -> 1.0  -- Valor por defecto
+\end{lstlisting}
+
+El comando \texttt{:quote} permite consultar y modificar las cotizaciones en tiempo de ejecución. Al actualizar una cotización, se reconstruye la función oráculo y se actualiza el entorno, de modo que las evaluaciones posteriores reflejan el cambio inmediatamente. El REPL inicializa el oráculo con valores por defecto para \texttt{OIL} (80.5), \texttt{AAPL} (150.0) y \texttt{USD\_ARS} (1000.0).
+
+\subsection{Pretty printer}
+
+El pretty printer utiliza niveles de precedencia para minimizar el uso de paréntesis. Cada operador tiene asociado un nivel de precedencia, y los paréntesis solo se insertan cuando el nivel de precedencia del contexto exterior es mayor al del operador actual.
+
+\begin{center}
+\begin{tabular}{c l}
+\toprule
+\textbf{Precedencia} & \textbf{Contratos} \\
+\midrule
+0 & \texttt{or} \\
+1 & \texttt{and} \\
+2 & \texttt{then} \\
+3 & prefijos (\texttt{give}, \texttt{get}, \texttt{scale}, \texttt{truncate}, \texttt{anytime}) \\
+4 & átomos (\texttt{zero}, \texttt{one}, variables) \\
+\bottomrule
+\end{tabular}
+\hspace{1cm}
+\begin{tabular}{c l}
+\toprule
+\textbf{Precedencia} & \textbf{Observables} \\
+\midrule
+0 & \texttt{+}, \texttt{-} \\
+1 & \texttt{*}, \texttt{/} \\
+2 & átomos (constantes, externos) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+De esta manera, una expresión como \texttt{(one USD and give one EUR) or zero} se imprime como \texttt{one USD and give one EUR or zero}, omitiendo los paréntesis innecesarios gracias a que \texttt{and} tiene mayor precedencia que \texttt{or}.
+
+\subsection{Fecha del sistema}
+
+El entorno de evaluación utiliza la \textbf{fecha real del sistema} (obtenida con \texttt{getCurrentTime} de \texttt{Data.Time}) como valor de \texttt{fechaHoy}. Esto tiene un efecto directo sobre el combinador \texttt{truncate}: los contratos cuya fecha límite ya haya pasado no generarán flujos de caja, comportándose de forma realista.
+
+\subsection{El REPL}
+
+El REPL se implementa con la librería Haskeline, que proporciona edición de línea, historial, y autocompletado. El estado del REPL incluye:
+
+\begin{itemize}[nosep]
+    \item \texttt{fEnv}: el entorno de evaluación (fecha, oráculo, partes).
+    \item \texttt{cStore}: el diccionario de contratos definidos (\texttt{Map String Contract}).
+    \item \texttt{qStore}: el mapa de cotizaciones del oráculo (\texttt{Map String Double}).
+    \item \texttt{inter}: flag de modo interactivo.
+\end{itemize}
+
+El sistema de comandos distingue entre directivas (prefijadas con \texttt{:}) y expresiones directas. Las expresiones se parsean como \texttt{Comm} y se evalúan con \texttt{evalComm}, mientras que las directivas realizan acciones especiales como mostrar el AST, hacer pretty print, cargar archivos, o consultar y modificar el oráculo.
+
+% ============================================================
+% 6. Bibliografía
+% ============================================================
+\section{Bibliografía.}
+
+\begin{thebibliography}{9}
+
+\bibitem{peytonjones2000}
+S. Peyton Jones, J-M. Eber, J. Seward.
+\textit{``Composing Contracts: An Adventure in Financial Engineering''}.
+ICFP 2000.
+\\\url{https://www.microsoft.com/en-us/research/publication/composing-contracts-an-adventure-in-financial-engineering/}
+
+\bibitem{parsec}
+Hackage. Documentación de Parsec.
+\\\url{https://hackage.haskell.org/package/parsec}
+
+\bibitem{haskeline}
+Hackage. Documentación de Haskeline.
+\\\url{https://hackage.haskell.org/package/haskeline}
+
+\bibitem{containers}
+Hackage. Documentación de Data.Map (containers).
+\\\url{https://hackage.haskell.org/package/containers}
+
+\bibitem{time}
+Hackage. Documentación de Data.Time.
+\\\url{https://hackage.haskell.org/package/time}
+
+\end{thebibliography}
+
+\end{document}

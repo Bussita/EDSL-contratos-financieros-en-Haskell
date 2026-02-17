@@ -2,6 +2,7 @@ module Evaluator where
 
 import qualified Data.Map as Map
 import Data.Map (Map)
+import qualified Data.Set as Set
 
 import Types
 import AST
@@ -10,26 +11,29 @@ import Utils
 
 type ContractStore = Map String Contract
 
+-- | Sustituye variables en un contrato, detectando ciclos.
 substContract :: ContractStore -> Contract -> Either EvalError Contract
-substContract _     Zero          = Right Zero
-substContract _     (One c)       = Right (One c)
-substContract store (Give c)      = Give <$> substContract store c
-substContract store (And c1 c2)   = And <$> substContract store c1 <*> substContract store c2
-substContract store (Or c1 c2)    = Or <$> substContract store c1 <*> substContract store c2
-substContract store (Then c1 c2)  = Then <$> substContract store c1 <*> substContract store c2
-substContract store (Truncate d c)= Truncate d <$> substContract store c
-substContract store (Scale o c)   = Scale o <$> substContract store c
-substContract store (Get c)       = Get <$> substContract store c
-substContract store (Anytime c)   = Anytime <$> substContract store c
-substContract store (Var name)    = case Map.lookup name store of
-    Just c  -> substContract store c
-    Nothing -> Left (EvalMsg $ "Contrato no definido: " ++ name)
+substContract store = go Set.empty
+  where
+    go _       Zero          = Right Zero
+    go _       (One c)       = Right (One c)
+    go visited (Give c)      = Give <$> go visited c
+    go visited (And c1 c2)   = And <$> go visited c1 <*> go visited c2
+    go visited (Or c1 c2)    = Or <$> go visited c1 <*> go visited c2
+    go visited (Then c1 c2)  = Then <$> go visited c1 <*> go visited c2
+    go visited (Truncate d c)= Truncate d <$> go visited c
+    go visited (Scale o c)   = Scale o <$> go visited c
+    go visited (Get c)       = Get <$> go visited c
+    go visited (Anytime c)   = Anytime <$> go visited c
+    go visited (Var name)
+        | Set.member name visited = Left (EvalMsg $ "Referencia cíclica detectada en variable: " ++ name)
+        | otherwise = case Map.lookup name store of
+            Just c  -> go (Set.insert name visited) c
+            Nothing -> Left (EvalMsg $ "Contrato no definido: " ++ name)
 
 evalComm :: ContractStore -> Env -> Comm -> Either EvalError (ContractStore, [Cashflow])
 evalComm store env (Assign name contract) =
-    case substContract store contract of
-        Left err -> Left err
-        Right resolved -> Right (Map.insert name resolved store, [])
+    Right (Map.insert name contract store, [])
 
 evalComm store env (Run contract) =
     case substContract store contract of
@@ -119,7 +123,7 @@ evalContract (Anytime c) = evalContract c
 evalContract (Var name) = throw (EvalMsg $ "Variable no resuelta: " ++ name)
 
 
--- | Calcular el valor neto de una lista de cashflows para una parte.
+-- Calcula el valor neto de una lista de cashflows para una parte.
 --   Positivo = recibe, Negativo = paga.
 netValue :: PartyId -> [Cashflow] -> Double
 netValue party = sum . map cf

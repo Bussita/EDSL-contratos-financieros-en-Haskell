@@ -94,7 +94,6 @@ parserAtom = parens parserContract <|> pZero <|> parserOne <|> parserVar
 pZero :: Parser Contract
 pZero = reserved "zero" >> return Zero
 
--- | Referencia a un contrato nombrado (alias)
 parserVar :: Parser Contract
 parserVar = Var <$> identifier
 
