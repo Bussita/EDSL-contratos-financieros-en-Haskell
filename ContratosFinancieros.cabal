@@ -25,7 +25,9 @@ library
   exposed-modules:
       AST
       Parser
+      PrettyPrinter
       Evaluator
+      Monads
       Types
       Utils
   other-modules:
@@ -36,10 +38,13 @@ library
   build-depends:
       base >=4.7 && <5
     , containers >=0.6
+    , exceptions
+    , haskeline
     , mtl
     , parsec >=3.1.14
     , text >=1.2
     , time >=1.9
+    , transformers
   default-language: Haskell2010
 
 executable financial-contracts-exe
@@ -53,26 +58,11 @@ executable financial-contracts-exe
       ContratosFinancieros
     , base >=4.7 && <5
     , containers >=0.6
+    , exceptions
+    , haskeline
     , mtl
     , parsec >=3.1.14
     , text >=1.2
     , time >=1.9
-  default-language: Haskell2010
-
-test-suite financial-contracts-test
-  type: exitcode-stdio-1.0
-  main-is: Main.hs
-  other-modules:
-      Paths_ContratosFinancieros
-  hs-source-dirs:
-      test
-  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      ContratosFinancieros
-    , base >=4.7 && <5
-    , containers >=0.6
-    , mtl
-    , parsec >=3.1.14
-    , text >=1.2
-    , time >=1.9
+    , transformers
   default-language: Haskell2010

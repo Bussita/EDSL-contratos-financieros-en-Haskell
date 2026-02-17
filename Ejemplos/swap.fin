@@ -1,0 +1,11 @@
+-- Ejemplo 2: Swap de monedas
+-- Un currency swap: yo pago USD y recibo EUR
+
+let pagoUSD = give one USD;
+let cobroEUR = one EUR;
+
+-- El swap es la combinación de ambos
+let swap = pagoUSD and cobroEUR;
+
+-- Escalamos a cantidades reales
+scale 1000.0 swap

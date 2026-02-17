@@ -1,0 +1,14 @@
+-- Ejemplo 1: Contratos básicos
+-- Un zero-coupon bond: recibir 1000 USD antes del 2027-01-01
+
+-- Definimos un pago simple
+let pago = one USD;
+
+-- Le damos escala
+let bono = scale 1000.0 pago;
+
+-- Lo limitamos en el tiempo
+let zcb = truncate 2027-01-01 bono;
+
+-- Evaluamos
+zcb

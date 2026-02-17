@@ -1,0 +1,20 @@
+-- Ejemplo 9: Elección y fallback con or/then
+
+-- Oferta A: recibir 500 USD
+let ofertaA = scale 500.0 one USD;
+
+-- Oferta B: recibir 300 EUR
+let ofertaB = scale 300.0 one EUR;
+
+-- Oferta C: recibir 100000 ARS
+let ofertaC = scale 100000.0 one ARS;
+
+-- or elige la más favorable para "yo" (compara netValue)
+let mejorOferta = ofertaA or ofertaB or ofertaC;
+
+-- Plan B (fallback): si todo falla, un contrato mínimo de respaldo
+let respaldo = scale 50.0 one GBP;
+
+let plan = mejorOferta then respaldo;
+
+plan

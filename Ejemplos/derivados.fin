@@ -1,0 +1,17 @@
+-- Ejemplo 7: Derivados con observables de mercado
+
+-- Contrato atado al precio del petróleo (OIL = 80.0 en el oráculo)
+let petrolero = scale OIL one USD;
+
+-- Contrato atado al precio de AAPL (AAPL = 150.0)
+let accionario = scale AAPL one USD;
+
+-- Spread: ganancia si AAPL > OIL (compro lo barato, vendo lo caro)
+let compraOIL = scale OIL one USD;
+let vendoAAPL = give scale AAPL one USD;
+let spread = compraOIL and vendoAAPL;
+
+-- Comparar todos lado a lado
+let resumen = petrolero and accionario and spread;
+
+resumen

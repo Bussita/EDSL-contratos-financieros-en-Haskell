@@ -5,30 +5,28 @@ module Types where
 import Data.Time (Day, fromGregorian)
 import GHC.Generics (Generic)
 
--- | Tipo para representar una fecha
 type Date = Day
 
--- | Tipo para representar una moneda
 data Currency = USD | EUR | ARS | GBP deriving (Show, Eq, Read)
 
--- | Identificador para una transacción o parte
 type PartyId = String
 
--- | Cantidad de dinero con una moneda
 data Amount = Amount
   { value :: Double
-  , currency :: String
+  , currency :: Currency
   } deriving (Show, Eq, Generic)
 
--- | Resultado de una evaluación
-data EvalResult = EvalResult
-  { cashflows :: [Cashflow]
-  } deriving (Show, Eq)
-
--- | Flujo de caja
 data Cashflow = Cashflow
-  { date :: Day
-  , amount :: Amount
-  , from :: PartyId
-  , to :: PartyId
+  { fecha :: Day
+  , cantidad :: Amount
+  , desde :: PartyId
+  , hacia :: PartyId
   } deriving (Show, Eq, Generic)
+
+data EvalError = DivByZero | UnknownObs String | EvalMsg String deriving (Show, Eq)
+
+data Env = Env { fechaHoy    :: Date
+               , getQuote    :: String -> Double
+               , yo          :: PartyId
+               , contraparte :: PartyId
+               }

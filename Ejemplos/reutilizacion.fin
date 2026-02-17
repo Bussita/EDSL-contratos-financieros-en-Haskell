@@ -1,0 +1,19 @@
+-- Ejemplo 11: Reutilización de aliases
+
+-- Bloque básico: un cupón de 100 USD
+let cupon = scale 100.0 one USD;
+
+-- Bono: 3 cupones + devolución de capital
+let capital = scale 1000.0 one USD;
+let bono = cupon and cupon and cupon and capital;
+
+-- Portafolio: tengo 2 bonos iguales
+let dobleBono = bono and bono;
+
+-- Le agrego cobertura: vendo un contrato espejo (give)
+let cobertura = give bono;
+
+-- Posición neta: 2 bonos - 1 cobertura = 1 bono neto
+let posicionNeta = dobleBono and cobertura;
+
+posicionNeta

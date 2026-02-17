@@ -13,11 +13,15 @@ data Contract =
     Then Contract Contract |
     Scale (Obs Double) Contract |
     Get Contract |
-    Anytime Contract 
-    {- Quizá a futuro
-    Let String Contract |
-    IfThenElse BoolExp Contract Contract -}
+    Anytime Contract |
+    Var String
     deriving (Show, Eq)
+
+data Comm =
+    Assign String Contract
+  | Seq Comm Comm
+  | Run Contract
+  deriving (Show, Eq)
 
 data Obs a =
     Konst a |

@@ -15,7 +15,8 @@ import AST
 
 lexer :: T.TokenParser ()
 lexer = T.makeTokenParser emptyDef {
-    T.reservedNames = ["zero", "one", "give", "and", "or", "truncate", "scale", "get", "anytime"],
+    T.reservedNames = ["zero", "one", "give", "and", "or", "truncate", "scale", "get", "anytime", "let"],
+    T.reservedOpNames = ["+", "-", "*", "/", "=", ";"],
     T.caseSensitive = False
 }
 
@@ -26,9 +27,27 @@ parens     = T.parens lexer
 identifier = T.identifier lexer
 reservedOp = T.reservedOp lexer
 whiteSpace = T.whiteSpace lexer
+semi       = T.semi lexer
 
--- --- PARSER DE CONTRATOS ---
+-- Comandos
+parserComm :: Parser Comm
+parserComm = chainl1 parserSingleComm (semi >> return Seq)
 
+parserSingleComm :: Parser Comm
+parserSingleComm = try parserAssign <|> parserEvalComm
+
+parserAssign :: Parser Comm
+parserAssign = do
+    reserved "let"
+    name <- identifier
+    reservedOp "="
+    c <- parserContract
+    return (Assign name c)
+
+parserEvalComm :: Parser Comm
+parserEvalComm = Run <$> parserContract
+
+-- Contratos
 parserContract :: Parser Contract
 parserContract = chainl1 parserTerm (reserved "or" >> return Or)
 
@@ -70,10 +89,14 @@ parserTruncate = do
     return (Truncate t c)
 
 parserAtom :: Parser Contract
-parserAtom = parens parserContract <|> pZero <|> parserOne
+parserAtom = parens parserContract <|> pZero <|> parserOne <|> parserVar
 
 pZero :: Parser Contract
 pZero = reserved "zero" >> return Zero
+
+-- | Referencia a un contrato nombrado (alias)
+parserVar :: Parser Contract
+parserVar = Var <$> identifier
 
 parserOne :: Parser Contract
 parserOne = do
@@ -83,7 +106,7 @@ parserOne = do
         Just (curr :: Currency) -> return (One curr)
         Nothing -> fail ("Error: " ++ c ++ " no es un tipo de moneda válido.")
 
--- --- PARSER DE FECHAS (YYYY-MM-DD) ---
+-- Fechas
 
 parserTime :: Parser Date
 parserTime = do
@@ -95,6 +118,7 @@ parserTime = do
     whiteSpace
     return (fromGregorian (read y) (read m) (read d))
 
+-- Observables
 parserObservable :: Parser (Obs Double)
 parserObservable = chainl1 parserMultDiv op
   where 

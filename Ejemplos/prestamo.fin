@@ -1,0 +1,14 @@
+-- Ejemplo 8: Préstamo simple
+-- Modelar un préstamo con interés.
+
+-- El banco me presta 10000 USD hoy
+let desembolso = scale 10000.0 one USD;
+
+-- Yo le devuelvo al banco (give = yo pago)
+-- Capital + 10% de interés = 11000 USD, con vencimiento
+let devolucion = give truncate 2027-01-01 scale 11000.0 one USD;
+
+-- El préstamo completo: recibo ahora, pago después
+let prestamo = desembolso and devolucion;
+
+prestamo

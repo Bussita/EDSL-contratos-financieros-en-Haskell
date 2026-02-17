@@ -2,7 +2,7 @@ module Monads where
 
 import Types
 
-newtype Eval a = Eval { runState :: Env -> Either EvalError (a, [Cashflow])}
+newtype Eval a = Eval { runEval :: Env -> Either EvalError (a, [Cashflow])}
 
 instance Functor Eval where
     fmap f (Eval h) = Eval (\env -> case h env of
@@ -23,6 +23,6 @@ instance Monad Eval where
     return = pure
     (Eval h) >>= f = Eval (\env -> case h env of
                                         Left err -> Left err
-                                        Right (a, cfs) -> case runState (f a) env of
+                                        Right (a, cfs) -> case runEval (f a) env of
                                                             Left err' -> Left err'
                                                             Right (b, cfs') -> Right (b, cfs ++ cfs'))
