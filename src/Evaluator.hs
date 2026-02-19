@@ -11,7 +11,7 @@ import Utils
 
 type ContractStore = Map String Contract
 
--- | Sustituye variables en un contrato, detectando ciclos.
+-- Sustituye variables en un contrato, detectando ciclos.
 substContract :: ContractStore -> Contract -> Either EvalError Contract
 substContract store = go Set.empty
   where

@@ -28,7 +28,8 @@ main = runInputT defaultSettings main'
 
 main' :: InputT IO ()
 main' = do
-  args <- lift getArgs
+  args <- lift getArgs -- getArgs tokeniza los strings que se le pasan al inicio del programa
+  -- por ejemplo podriamos hacer stack run -- Ejemplos/basico.fin
   today <- lift $ utctDay <$> getCurrentTime
   
   let defaultQuotes = Map.fromList
@@ -46,9 +47,9 @@ main' = do
   
   let initialState = S { inter = False, lfile = "", fEnv = defaultEnv, cStore = Map.empty, qStore = defaultQuotes }
   
-  readevalprint args initialState
+  readevalprint args initialState -- inicia el loop
 
--- | Construir función oráculo a partir del mapa de cotizaciones
+-- Construye una función oráculo a partir de el mapa dado
 makeOracle :: Map.Map String Double -> (String -> Double)
 makeOracle quotes name = case Map.lookup name quotes of
     Just v  -> v
@@ -68,22 +69,35 @@ data State = S
   , cStore :: Evaluator.ContractStore  -- Diccionario con las variables de contrato
   , qStore :: Map.Map String Double    -- Cotizaciones del oráculo
   }
+-- Inter es una bandera que indica cómo se lee la entrada (abajo en readevalprint se ve el uso)
+-- lfile es el acrónimo de "last file" y la idea es que guarde el path del último archivo cargado
+-- se implementa con la intención de hacer "reload" (no está implementado)
+-- Después tenemos fEnv que es nuestro entorno que definimos en Types.hs
+-- cStore es nuestro diccionario con las variables de contrato (definido en Evaluator.hs)
+-- qStore es nuestro diccionario de Quotes (osea nuestro Oráculo), que son los valores observables externos.
+
 
 readevalprint :: [String] -> State -> InputT IO ()
 readevalprint args state =
-  let rec st = do
+  let rec st = do -- definimos una funcion local rec que es la que hace el loop recursivo
         mx <- MC.catch
           (if inter st then getInputLine iprompt else lift $ fmap Just getLine)
           (lift . ioExceptionCatcher)
+          -- getImputLine es una función de la librería Haskeline que hace que podamos customizar
+          -- la entrada estándar con un prompt que elijamos (el nuestro es >Fin )
+          -- Cuando la bandera inter es false, se usa el getLine por defecto de IO, el cual
+          -- se le aplica un Just por un tema de tipos y se liftea a la transformadora de monadas InputT
+
+          -- MC.catch es control de errores que funciona como una especie de lift para el error en InputT
         case mx of
           Nothing -> return ()
           Just "" -> rec st
           Just x  -> do
             cmd <- interpretCommand x
             st' <- handleCommand st cmd
-            maybe (return ()) rec st'
+            maybe (return ()) rec st' -- equivalente a hacer case st' of 
   in  do
-        -- Si hubiera archivos que pasar por argumento, se compilarían aquí
+        -- Si hubiera archivos que pasar por argumento, se podría agregar esto
         -- state' <- compileFiles args state 
         when (not (inter state)) $ lift $ putStrLn
           (  "Intérprete de "
@@ -100,15 +114,20 @@ data Command = EvalContract String
              | LoadFile String
              | ShowStore
              | SetQuote String
+             | SetPartes String
              | Quit
              | Help
              | Noop
 
+--interpretCommand ve si el comando de la consola comienza con : (y lo busca en tabla)
+-- por otro lado si no comienza con : lo trata como expresion del lenguaje
 interpretCommand :: String -> InputT IO Command
-interpretCommand x = lift $ if isPrefixOf ":" x
+interpretCommand x = lift $ if isPrefixOf ":" x -- se fija si es prefijo
   then do
-    let (cmd, t') = break isSpace x
-    let t         = dropWhile isSpace t'
+    let (cmd, t') = break isSpace x -- Toma el prefijo mas largo que no es espacio, es decir, el comando
+    let t         = dropWhile isSpace t' -- borra espacios al inicio
+    -- la lista commands esta armada con todos elementos de tipo InteractiveCommands asi que
+    -- la funcion del filtro matchea
     let matching = filter (\(Cmd cs _ _ _) -> any (isPrefixOf cmd) cs) commands
     case matching of
       [] -> do
@@ -127,7 +146,7 @@ handleCommand state cmd = case cmd of
   Help   -> lift $ putStr (helpTxt commands) >> return (Just state)
   
   PrintAST s -> do
-    case parse parserContract "<interactive>" s of
+    case parse parserContract "<interactive>" s of -- interactive es para indicar que el error vino de REPL
       Left err -> lift $ putStrLn $ "Error de parseo: " ++ show err
       Right ast -> lift $ putStrLn $ "AST:\n" ++ show ast
     return (Just state)
@@ -206,6 +225,20 @@ handleCommand state cmd = case cmd of
         lift $ putStrLn "Uso: :quote <nombre> <valor>  (ej: :quote OIL 85.0)"
         return (Just state)
 
+  SetPartes s -> do
+    let ws = words s
+    case ws of
+      [] -> do
+        lift $ putStrLn $ "Partes actuales: yo = " ++ yo (fEnv state) ++ ", contraparte = " ++ contraparte (fEnv state)
+        return (Just state)
+      [p1, p2] -> do
+        let newEnv = (fEnv state) { yo = p1, contraparte = p2 }
+        lift $ putStrLn $ "Partes actualizadas: yo = " ++ p1 ++ ", contraparte = " ++ p2
+        return (Just state { fEnv = newEnv })
+      _ -> do
+        lift $ putStrLn "Uso: :partes <yo> <contraparte>  (ej: :partes Santiago HSBC)"
+        return (Just state)
+
   EvalComm s -> do
     case parse parserComm "<interactive>" s of
       Left err -> do
@@ -238,13 +271,14 @@ handleCommand state cmd = case cmd of
     return (Just state)
 
 data InteractiveCommand = Cmd [String] String (String -> Command) String
+-- InteractiveCommand tiene: Lista de posibles nombres de comando - Descripcion del argumento
+-- Funcion que construye el command y un string de ayuda.
 
 hasAssign :: Comm -> Bool
 hasAssign (Assign _ _) = True
 hasAssign (Seq c1 c2)  = hasAssign c1 || hasAssign c2
 hasAssign (Run _)     = False
 
--- | Determina si una línea es un comentario (empieza con --) o está vacía
 isCommentOrEmpty :: String -> Bool
 isCommentOrEmpty s =
     let trimmed = dropWhile isSpace s
@@ -258,6 +292,7 @@ commands =
   , Cmd [":load"]   "<archivo>"      LoadFile     "Cargar un archivo .fin"
   , Cmd [":store"]  ""               (const ShowStore)  "Mostrar contratos definidos"
   , Cmd [":quote"]  "[<nombre> <val>]" SetQuote   "Ver/definir cotización (ej: :quote OIL 85.0)"
+  , Cmd [":partes"] "[<yo> <contra>]" SetPartes  "Ver/cambiar partes (ej: :partes Santiago HSBC)"
   , Cmd [":quit"]   ""               (const Quit) "Salir del intérprete"
   , Cmd [":help", ":?"] ""           (const Help) "Mostrar esta lista de comandos"
   ]

@@ -4,9 +4,6 @@ import AST
 import Types
 import Monads
 
-zcb :: Date -> Double -> Currency -> Contract
-zcb t x c = Scale (Konst x) (Get (Truncate t (One c)))
-
 ask :: Eval Env
 ask = Eval (\env -> Right (env,[]))
 
