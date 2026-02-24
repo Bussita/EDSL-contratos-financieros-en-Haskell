@@ -9,7 +9,7 @@ let ofertaB = scale 300.0 one EUR;
 -- Oferta C: recibir 100000 ARS
 let ofertaC = scale 100000.0 one ARS;
 
--- or elige la más favorable para "yo" (compara netValue)
+-- or elige la más favorable para mi
 let mejorOferta = ofertaA or ofertaB or ofertaC;
 
 -- Plan B (fallback): si todo falla, un contrato mínimo de respaldo

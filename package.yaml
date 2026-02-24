@@ -38,7 +38,8 @@ library:
     - Evaluator
     - Monads
     - Types
-    - Utils
+    - Graficos
+    - Wallet
 
 executables:
   financial-contracts-exe:

@@ -1,0 +1,11 @@
+-- Ejemplo: Uso de la negacion en observables
+-- El operador unario - permite negar valores de observables.
+
+-- Diferencia entre dos activos: AAPL - OIL
+let diferencia = scale (AAPL - OIL) one USD;
+
+-- Negacion de un observable: contrato inverso al petroleo
+let inverso = scale (-OIL) one USD;
+
+-- Combinacion: spread + posicion inversa
+diferencia and inverso

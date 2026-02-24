@@ -7,7 +7,7 @@ import GHC.Generics (Generic)
 
 type Date = Day
 
-data Currency = USD | EUR | ARS | GBP deriving (Show, Eq, Read)
+data Currency = USD | EUR | ARS | GBP deriving (Show, Eq, Read, Ord)
 
 type PartyId = String
 
@@ -26,7 +26,7 @@ data Cashflow = Cashflow
 data EvalError = DivByZero | UnknownObs String | EvalMsg String deriving (Show, Eq)
 
 data Env = Env { fechaHoy    :: Date
-               , getQuote    :: String -> Double
+               , getQuote    :: String -> Maybe Double
                , yo          :: PartyId
                , contraparte :: PartyId
                }

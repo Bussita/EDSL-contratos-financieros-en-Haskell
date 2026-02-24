@@ -1,0 +1,10 @@
+-- Ejemplo: Opcion call sobre AAPL
+-- Derecho a comprar acciones de AAPL al precio actual, o no hacer nada.
+-- El combinador 'or' elige automaticamente la opcion mas favorable.
+
+let compra = scale AAPL one USD;
+
+-- or zero: si el contrato no conviene, no se ejerce
+let call = compra or zero;
+
+call

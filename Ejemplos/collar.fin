@@ -1,0 +1,17 @@
+-- Ejemplo: Estrategia collar
+-- Combinacion de una posicion larga con un piso y un techo.
+-- Limita tanto las perdidas como las ganancias.
+
+-- Posicion en petroleo (100 barriles)
+let posicion = scale (100.0 * OIL) one USD;
+
+-- Piso: si el precio baja de 60 USD/barril, recibo compensacion
+let piso = scale (100.0 * 60.0) one USD;
+
+-- Techo: si el precio sube de 100 USD/barril, pago la diferencia
+let techo = give scale (100.0 * 100.0) one USD;
+
+-- Collar completo
+let collar = posicion and piso and techo;
+
+collar

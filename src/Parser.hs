@@ -7,6 +7,7 @@ import qualified Text.Parsec.Expr as E
 import qualified Text.Parsec.Token as T
 import Text.Parsec.Language (emptyDef)
 import Text.Read (readMaybe)
+import Data.Char (toUpper)
 import Data.Time (Day ,fromGregorian)
 import Text.Parsec.Char (digit, char)
 
@@ -15,7 +16,7 @@ import AST
 
 lexer :: T.TokenParser ()
 lexer = T.makeTokenParser emptyDef {
-    T.reservedNames = ["zero", "one", "give", "and", "or", "truncate", "scale", "get", "anytime", "let"],
+    T.reservedNames = ["zero", "one", "give", "and", "or", "truncate", "then", "scale", "get", "anytime", "let"],
     T.reservedOpNames = ["+", "-", "*", "/", "=", ";"],
     T.caseSensitive = False
 }
@@ -48,6 +49,17 @@ parserEvalComm :: Parser Comm
 parserEvalComm = Run <$> parserContract
 
 -- Contratos
+{-
+chainl es equivalente a
+parserContract = do
+    t <- parserTerm
+    rest t
+  where
+    rest acc = (do reserved "or"
+                   t <- parserTerm
+                   rest (Or acc t))
+              <|> return acc
+-}
 parserContract :: Parser Contract
 parserContract = chainl1 parserTerm (reserved "or" >> return Or)
 
@@ -101,7 +113,7 @@ parserOne :: Parser Contract
 parserOne = do
     reserved "one"
     c <- identifier
-    case readMaybe c of
+    case readMaybe (map toUpper c) of
         Just (curr :: Currency) -> return (One curr)
         Nothing -> fail ("Error: " ++ c ++ " no es un tipo de moneda válido.")
 
@@ -132,8 +144,15 @@ parserMultDiv = chainl1 parserObsAtom op
 
 parserObsAtom :: Parser (Obs Double)
 parserObsAtom = parens parserObservable
+            <|> try parserNeg
             <|> try parserKonst
             <|> parserExternal
+
+parserNeg :: Parser (Obs Double)
+parserNeg = do
+    reservedOp "-"
+    o <- parserObsAtom
+    return (Neg o)
 
 parserKonst :: Parser (Obs Double)
 parserKonst = do

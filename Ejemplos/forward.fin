@@ -1,0 +1,9 @@
+-- Ejemplo: Contrato forward sobre petroleo
+-- Acuerdo para comprar 100 barriles al precio actual del mercado.
+-- Si el precio sube, el comprador gana; si baja, pierde.
+
+let barril = scale OIL one USD;
+
+let forward = scale 100.0 barril;
+
+forward

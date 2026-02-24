@@ -1,0 +1,16 @@
+-- Ejemplo: Bono con cupones semestrales
+-- Un bono que paga cupones de 50 USD cada semestre
+-- y devuelve el capital al vencimiento.
+
+let cupon1 = truncate 2026-06-01 scale 50.0 one USD;
+let cupon2 = truncate 2026-12-01 scale 50.0 one USD;
+let cupon3 = truncate 2027-06-01 scale 50.0 one USD;
+let cupon4 = truncate 2027-12-01 scale 50.0 one USD;
+
+-- Devolucion de capital al vencimiento
+let capital = truncate 2027-12-01 scale 1000.0 one USD;
+
+-- El bono completo: cupones + capital
+let bono = cupon1 and cupon2 and cupon3 and cupon4 and capital;
+
+bono

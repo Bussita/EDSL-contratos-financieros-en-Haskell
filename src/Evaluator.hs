@@ -7,7 +7,6 @@ import qualified Data.Set as Set
 import Types
 import AST
 import Monads
-import Utils
 
 type ContractStore = Map String Contract
 
@@ -52,7 +51,9 @@ evalObs :: Obs Double -> Eval Double
 evalObs (Konst x)    = return x
 evalObs (External s) = do
     env <- ask
-    return (getQuote env s)
+    case getQuote env s of
+        Just v  -> return v
+        Nothing -> throw (UnknownObs s)
 evalObs (Add a b) = (+) <$> evalObs a <*> evalObs b
 evalObs (Sub a b) = (-) <$> evalObs a <*> evalObs b
 evalObs (Mul a b) = (*) <$> evalObs a <*> evalObs b
@@ -92,7 +93,8 @@ evalContract (Or c1 c2) = do
         (Left _, Right _)              -> evalContract c2
         (Right _, Left _)              -> evalContract c1
         (Right ((), cfs1), Right ((), cfs2)) ->
-            if netValue (yo env) cfs1 >= netValue (yo env) cfs2
+            let oracle = getQuote env
+            in if netValue oracle (yo env) cfs1 >= netValue oracle (yo env) cfs2
                 then evalContract c1
                 else evalContract c2
 
@@ -123,12 +125,23 @@ evalContract (Anytime c) = evalContract c
 evalContract (Var name) = throw (EvalMsg $ "Variable no resuelta: " ++ name)
 
 
--- Calcula el valor neto de una lista de cashflows para una parte.
+-- Convierte un Amount a valor base (USD) usando el oráculo.
+-- Convención: busca "CUR_USD" en el oráculo. Si no existe, usa el valor crudo.
+toBaseValue :: (String -> Maybe Double) -> Amount -> Double
+toBaseValue oracle (Amount v cur) =
+    case cur of
+        USD -> v
+        _   -> case oracle (show cur ++ "_USD") of
+                   Just rate -> v * rate
+                   Nothing   -> v  -- fallback: valor sin convertir
+
+-- Calcula el valor neto de una lista de cashflows para una parte,
+-- normalizando a USD usando el oráculo para comparaciones justas.
 --   Positivo = recibe, Negativo = paga.
-netValue :: PartyId -> [Cashflow] -> Double
-netValue party = sum . map cf
+netValue :: (String -> Maybe Double) -> PartyId -> [Cashflow] -> Double
+netValue oracle party = sum . map cf
   where
     cf flow
-        | hacia flow == party = value (cantidad flow)
-        | desde flow == party = negate (value (cantidad flow))
+        | hacia flow == party = toBaseValue oracle (cantidad flow)
+        | desde flow == party = negate (toBaseValue oracle (cantidad flow))
         | otherwise           = 0

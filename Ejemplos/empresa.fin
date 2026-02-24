@@ -1,0 +1,19 @@
+-- Ejemplo: Balance simplificado de una empresa
+-- Modela ingresos y egresos de una empresa exportadora.
+
+-- Ingresos
+let ventas_locales = scale 500000.0 one ARS;
+let exportaciones = scale 3000.0 one EUR;
+
+-- Costos operativos
+let salarios = give scale 200000.0 one ARS;
+let alquiler = give scale 50000.0 one ARS;
+let importaciones = give scale 1000.0 one USD;
+
+-- Impuestos con vencimiento
+let impuestos = give truncate 2026-04-30 scale 100000.0 one ARS;
+
+-- Balance completo
+let balance = ventas_locales and exportaciones and salarios and alquiler and importaciones and impuestos;
+
+balance

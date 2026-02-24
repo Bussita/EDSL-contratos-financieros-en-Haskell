@@ -10,5 +10,4 @@ let bono = scale 1000.0 pago;
 -- Lo limitamos en el tiempo
 let zcb = truncate 2027-01-01 bono;
 
--- Evaluamos
 zcb

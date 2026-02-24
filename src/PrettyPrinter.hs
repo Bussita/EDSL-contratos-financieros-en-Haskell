@@ -27,13 +27,13 @@ ppContractPrec _ (One c)   = "one " ++ ppCurrency c
 ppContractPrec _ (Var x)   = x
 
 ppContractPrec p (Or c1 c2) =
-    parensIf (p > 0) $ ppContractPrec 0 c1 ++ " or " ++ ppContractPrec 1 c2
+    parensIf (p > 0) $ ppMaybeParens 0 c1 ++ " or " ++ ppMaybeParens 0 c2
 
 ppContractPrec p (And c1 c2) =
-    parensIf (p > 1) $ ppContractPrec 1 c1 ++ " and " ++ ppContractPrec 2 c2
+    parensIf (p > 1) $ ppMaybeParens 1 c1 ++ " and " ++ ppMaybeParens 1 c2
 
 ppContractPrec p (Then c1 c2) =
-    parensIf (p > 2) $ ppContractPrec 2 c1 ++ " then " ++ ppContractPrec 3 c2
+    parensIf (p > 2) $ ppMaybeParens 2 c1 ++ " then " ++ ppMaybeParens 2 c2
 
 ppContractPrec p (Give c) =
     parensIf (p > 3) $ "give " ++ ppContractPrec 3 c
@@ -49,6 +49,26 @@ ppContractPrec p (Scale o c) =
 
 ppContractPrec p (Truncate d c) =
     parensIf (p > 3) $ "truncate " ++ ppDate d ++ " " ++ ppContractPrec 3 c
+
+-- Paréntesis de claridad: si un hijo de un operador infijo es otro
+-- operador infijo distinto, se agregan paréntesis aunque no sean
+-- estrictamente necesarios por precedencia.
+ppMaybeParens :: Int -> Contract -> String
+ppMaybeParens prec child
+    | isInfix child && infixPrec child /= prec = "(" ++ ppContractPrec 0 child ++ ")"
+    | otherwise = ppContractPrec (prec + 1) child
+
+isInfix :: Contract -> Bool
+isInfix (Or _ _)   = True
+isInfix (And _ _)  = True
+isInfix (Then _ _) = True
+isInfix _          = False
+
+infixPrec :: Contract -> Int
+infixPrec (Or _ _)   = 0
+infixPrec (And _ _)  = 1
+infixPrec (Then _ _) = 2
+infixPrec _          = 4
 
 -- Observables, recordando que la precedencia es:
 --     0 - suma, resta
@@ -104,9 +124,9 @@ ppCashflows cfs =
 
 -- Errores
 ppError :: EvalError -> String
-ppError DivByZero        = "Error: división por cero"
-ppError (UnknownObs s)   = "Error: observable desconocido '" ++ s ++ "'"
-ppError (EvalMsg s)      = "Error: " ++ s
+ppError DivByZero        = "ERROR (DivByZero): división por cero"
+ppError (UnknownObs s)   = "ERROR (UnknownObs): observable desconocido '" ++ s ++ "'"
+ppError (EvalMsg s)      = "ERROR (EvalMsg): " ++ s
 
 
 ppCurrency :: Currency -> String

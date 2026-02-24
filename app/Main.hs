@@ -14,7 +14,6 @@ import           System.IO               hiding ( print )
 import           Text.Parsec                    ( parse )
 import           Data.Time                      ( fromGregorian, getCurrentTime, utctDay )
 
-import           Utils
 import qualified Data.Map as Map
 import           AST
 import           Types
@@ -22,6 +21,8 @@ import           Parser
 import           PrettyPrinter
 import           Evaluator
 import           Monads
+import           Graficos
+import           Wallet
 
 main :: IO ()
 main = runInputT defaultSettings main'
@@ -36,6 +37,9 @@ main' = do
         [ ("OIL", 80.5)
         , ("AAPL", 150.0)
         , ("USD_ARS", 1000.0)
+        , ("EUR_USD", 1.08)
+        , ("GBP_USD", 1.27)
+        , ("ARS_USD", 0.001)
         ]
   
   let defaultEnv = Env 
@@ -45,15 +49,13 @@ main' = do
         , contraparte  = "Banco"
         }
   
-  let initialState = S { inter = False, lfile = "", fEnv = defaultEnv, cStore = Map.empty, qStore = defaultQuotes }
+  let initialState = S { inter = False, lfile = "", fEnv = defaultEnv, cStore = Map.empty, qStore = defaultQuotes, wallets = emptyWallets, pStore = Map.empty }
   
   readevalprint args initialState -- inicia el loop
 
 -- Construye una función oráculo a partir de el mapa dado
-makeOracle :: Map.Map String Double -> (String -> Double)
-makeOracle quotes name = case Map.lookup name quotes of
-    Just v  -> v
-    Nothing -> 1.0  -- Valor por defecto para observables desconocidos
+makeOracle :: Map.Map String Double -> (String -> Maybe Double)
+makeOracle quotes name = Map.lookup name quotes
 
 iname, iprompt :: String
 iname = "EDSL de Contratos Financieros"
@@ -63,19 +65,14 @@ ioExceptionCatcher :: IOException -> IO (Maybe a)
 ioExceptionCatcher _ = return Nothing
 
 data State = S
-  { inter  :: Bool
-  , lfile  :: String
-  , fEnv   :: Env
-  , cStore :: Evaluator.ContractStore  -- Diccionario con las variables de contrato
-  , qStore :: Map.Map String Double    -- Cotizaciones del oráculo
+  { inter    :: Bool
+  , lfile    :: String
+  , fEnv     :: Env
+  , cStore   :: Evaluator.ContractStore  -- Diccionario con las variables de contrato
+  , qStore   :: Map.Map String Double    -- Cotizaciones del oráculo
+  , wallets  :: Wallets                  -- Billeteras de las partes
+  , pStore   :: PendingStore             -- Contratos pendientes de firma
   }
--- Inter es una bandera que indica cómo se lee la entrada (abajo en readevalprint se ve el uso)
--- lfile es el acrónimo de "last file" y la idea es que guarde el path del último archivo cargado
--- se implementa con la intención de hacer "reload" (no está implementado)
--- Después tenemos fEnv que es nuestro entorno que definimos en Types.hs
--- cStore es nuestro diccionario con las variables de contrato (definido en Evaluator.hs)
--- qStore es nuestro diccionario de Quotes (osea nuestro Oráculo), que son los valores observables externos.
-
 
 readevalprint :: [String] -> State -> InputT IO ()
 readevalprint args state =
@@ -115,6 +112,13 @@ data Command = EvalContract String
              | ShowStore
              | SetQuote String
              | SetPartes String
+             | Grafico String
+             | ShowWallet String
+             | Deposit String
+             | Propose String
+             | Sign String
+             | Execute String
+             | ShowPending
              | Quit
              | Help
              | Noop
@@ -239,6 +243,143 @@ handleCommand state cmd = case cmd of
         lift $ putStrLn "Uso: :partes <yo> <contraparte>  (ej: :partes Santiago HSBC)"
         return (Just state)
 
+  Grafico s -> do
+    case parse parserContract "<interactive>" s of
+      Left err -> lift $ putStrLn $ "Error de parseo: " ++ show err
+      Right contract -> do
+        case substContract (cStore state) contract of
+          Left err -> lift $ putStrLn $ ppError err
+          Right resolved -> do
+            case runEval (evalContract resolved) (fEnv state) of
+              Left err -> lift $ putStrLn $ ppError err
+              Right ((), cfs) ->
+                lift $ putStrLn $ "\n" ++ ppGrafico (yo (fEnv state)) cfs
+    return (Just state)
+
+  ShowWallet s -> do
+    lift $ do
+      let ws = words s
+      case ws of
+        []      -> putStrLn $ ppWallets (wallets state)
+        [party] -> putStrLn $ ppWallet (wallets state) party
+        _       -> putStrLn "Uso: :wallet [<parte>]"
+    return (Just state)
+
+  Deposit s -> do
+    let ws = words s
+    case ws of
+      [party, amtS, curS] -> case (reads amtS, reads curS) of
+        ([(amt, "")], [(cur, "")]) -> do
+          let newWallets = Wallet.deposit party cur amt (wallets state)
+          lift $ putStrLn $ "Depositados " ++ showDouble amt ++ " "
+                            ++ ppCurrency cur ++ " en billetera de " ++ party
+          return (Just state { wallets = newWallets })
+        _ -> do
+          lift $ putStrLn "Valor o moneda inválida. Monedas: USD, EUR, ARS, GBP"
+          return (Just state)
+      _ -> do
+        lift $ putStrLn "Uso: :deposit <parte> <monto> <moneda>"
+        lift $ putStrLn "  Ej: :deposit Bussa 10000 USD"
+        return (Just state)
+
+  Propose s -> do
+    let ws = words s
+    case ws of
+      (name : rest)
+        | not (null rest) -> do
+          let contractStr = unwords rest
+          case parse parserContract "<interactive>" contractStr of
+            Left err -> do
+              lift $ putStrLn $ "Error de parseo: " ++ show err
+              return (Just state)
+            Right contract -> do
+              let today = fechaHoy (fEnv state)
+              let me = yo (fEnv state)
+              let them = contraparte (fEnv state)
+              let pc = createPending name contract me them today
+              let newPStore = Map.insert name pc (pStore state)
+              lift $ do
+                putStrLn $ "Contrato '" ++ name ++ "' propuesto."
+                putStrLn $ "  Partes: " ++ me ++ " y " ++ them
+                putStrLn   "  Requiere firma de ambas partes para ejecutarse."
+                putStrLn $ "  Use :sign " ++ name ++ " <parte> para firmar."
+              return (Just state { pStore = newPStore })
+      _ -> do
+        lift $ putStrLn "Uso: :propose <nombre> <contrato>"
+        lift $ putStrLn "  Ej: :propose miSwap scale 1000.0 one USD"
+        return (Just state)
+
+  Sign s -> do
+    let ws = words s
+    case ws of
+      [name, party] -> do
+        case Map.lookup name (pStore state) of
+          Nothing -> do
+            lift $ putStrLn $ "No existe contrato pendiente '" ++ name ++ "'."
+            return (Just state)
+          Just pc -> do
+            case signContract party pc of
+              Left err -> do
+                lift $ putStrLn err
+                return (Just state)
+              Right pc' -> do
+                let newPStore = Map.insert name pc' (pStore state)
+                lift $ do
+                  putStrLn $ party ++ " firmó el contrato '" ++ name ++ "'."
+                  when (isFullySigned pc') $
+                    putStrLn $ "Contrato completamente firmado. Use :execute " ++ name ++ " para ejecutarlo."
+                return (Just state { pStore = newPStore })
+      _ -> do
+        lift $ putStrLn "Uso: :sign <nombre> <parte>"
+        lift $ putStrLn "  Ej: :sign miSwap Bussa"
+        return (Just state)
+
+  Execute s -> do
+    let name = dropWhile (== ' ') s
+    case Map.lookup name (pStore state) of
+      Nothing -> do
+        lift $ putStrLn $ "No existe contrato pendiente '" ++ name ++ "'."
+        return (Just state)
+      Just pc -> do
+        if not (isFullySigned pc)
+          then do
+            lift $ putStrLn $ "Contrato '" ++ name ++ "' no está completamente firmado."
+            lift $ putStrLn $ ppPending (name, pc)
+            return (Just state)
+          else do
+            let execEnv = (fEnv state) { yo = pcPartyA pc, contraparte = pcPartyB pc }
+            case substContract (cStore state) (pcContract pc) of
+              Left err -> do
+                lift $ putStrLn $ ppError err
+                return (Just state)
+              Right resolved -> do
+                case runEval (evalContract resolved) execEnv of
+                  Left err -> do
+                    lift $ putStrLn $ ppError err
+                    return (Just state)
+                  Right ((), cfs) -> do
+                    case applyCashflows (wallets state) cfs of
+                      Left err -> do
+                        lift $ do
+                          putStrLn $ "Fondos insuficientes: " ++ err
+                          putStrLn   "  Deposite fondos con :deposit y reintente."
+                        return (Just state)
+                      Right newWallets -> do
+                        let newPStore = Map.delete name (pStore state)
+                        lift $ do
+                          putStrLn $ "Contrato '" ++ name ++ "' ejecutado exitosamente."
+                          putStrLn ""
+                          putStr $ ppCashflows cfs
+                          putStrLn ""
+                          putStrLn "Billeteras actualizadas:"
+                          putStrLn $ ppWallet newWallets (pcPartyA pc)
+                          putStrLn $ ppWallet newWallets (pcPartyB pc)
+                        return (Just state { wallets = newWallets, pStore = newPStore })
+
+  ShowPending -> do
+    lift $ putStrLn $ ppPendings (pStore state)
+    return (Just state)
+
   EvalComm s -> do
     case parse parserComm "<interactive>" s of
       Left err -> do
@@ -293,6 +434,13 @@ commands =
   , Cmd [":store"]  ""               (const ShowStore)  "Mostrar contratos definidos"
   , Cmd [":quote"]  "[<nombre> <val>]" SetQuote   "Ver/definir cotización (ej: :quote OIL 85.0)"
   , Cmd [":partes"] "[<yo> <contra>]" SetPartes  "Ver/cambiar partes (ej: :partes Santiago HSBC)"
+  , Cmd [":grafico"] "<contrato>"   Grafico      "Grafico de flujos de caja"
+  , Cmd [":wallet"] "[<parte>]"      ShowWallet   "Ver billetera(s)"
+  , Cmd [":deposit"] "<parte> <monto> <moneda>" Deposit "Depositar fondos"
+  , Cmd [":propose"] "<nombre> <contrato>" Propose "Proponer contrato (requiere firmas)"
+  , Cmd [":sign"]   "<nombre> <parte>" Sign       "Firmar un contrato pendiente"
+  , Cmd [":execute"] "<nombre>"      Execute      "Ejecutar contrato firmado"
+  , Cmd [":pending"] ""              (const ShowPending) "Ver contratos pendientes"
   , Cmd [":quit"]   ""               (const Quit) "Salir del intérprete"
   , Cmd [":help", ":?"] ""           (const Help) "Mostrar esta lista de comandos"
   ]

@@ -1,0 +1,14 @@
+-- Ejemplo: Contrato de seguro
+-- Pago una prima anual y recibo cobertura con vencimiento.
+
+-- Prima: pago 500 USD al asegurador
+let prima = give scale 500.0 one USD;
+
+-- Cobertura: el asegurador me paga 50000 USD si ocurre el siniestro
+-- La cobertura tiene vigencia hasta fin de 2027
+let cobertura = truncate 2027-12-31 scale 50000.0 one USD;
+
+-- Contrato de seguro completo
+let seguro = prima and cobertura;
+
+seguro

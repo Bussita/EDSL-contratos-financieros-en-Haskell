@@ -1,0 +1,14 @@
+-- Ejemplo: Opcion put
+-- Derecho a vender un activo al precio fijado, o no hacer nada.
+-- Protege contra caidas del precio del activo.
+
+-- Vendo el activo al precio de mercado
+let venta = give scale AAPL one USD;
+
+-- Recibo el precio fijo acordado (strike = 150 USD)
+let compensacion = scale 150.0 one USD;
+
+-- La opcion put: ejerzo si me conviene, sino no hago nada
+let put = (venta and compensacion) or zero;
+
+put

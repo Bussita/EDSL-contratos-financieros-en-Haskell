@@ -29,7 +29,8 @@ library
       Evaluator
       Monads
       Types
-      Utils
+      Graficos
+      Wallet
   other-modules:
       Paths_ContratosFinancieros
   hs-source-dirs:

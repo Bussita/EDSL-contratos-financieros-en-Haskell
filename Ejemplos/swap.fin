@@ -2,6 +2,7 @@
 -- Un currency swap: yo pago USD y recibo EUR
 
 let pagoUSD = give one USD;
+
 let cobroEUR = one EUR;
 
 -- El swap es la combinación de ambos
