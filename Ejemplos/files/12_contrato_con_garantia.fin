@@ -1,0 +1,17 @@
+-- Ejemplo 12: Contrato con garantía (then)
+-- `then` modela un contrato principal con un contrato de respaldo.
+-- Si el principal no genera cashflows (porque venció), se ejecuta la garantía.
+--
+-- Caso A: el bono está vigente → cobra el bono, ignora la garantía.
+-- Caso B: el bono venció       → cobra la garantía.
+
+-- Bono principal (vence en 2027)
+let bono_principal = truncate 2027-01-01 scale 10000.0 one USD;
+
+-- Garantía de respaldo (vence más tarde, en 2028)
+let garantia = truncate 2028-01-01 scale 9000.0 one USD;
+
+-- Si el bono no produce cashflows (vencido), ejecutar garantía
+let contrato_garantizado = bono_principal then garantia;
+
+contrato_garantizado

@@ -1,0 +1,25 @@
+-- Ejemplo 15: Margen y cobertura basados en saldo
+-- Un contrato de margen requiere que una parte deposite garantías
+-- proporcionales a su posición. Si su saldo baja de cierto umbral,
+-- debe realizar un "margin call".
+--
+-- Aquí modelamos: si el saldo de Alice en USD es suficiente (> 1000),
+-- se ejecuta el contrato principal; si no, se ejecuta el contrato reducido.
+
+deposit Alice 5000 USD;
+deposit Bob   5000 USD;
+
+-- Contrato principal: swap de 2000 USD por 2000 EUR
+let swap_principal = give scale 2000.0 one USD and scale 2000.0 one EUR;
+
+-- Contrato reducido si hay poco margen: solo 500 USD por 500 EUR
+let swap_reducido = give scale 500.0 one USD and scale 500.0 one EUR;
+
+-- Elegimos según cuál genera mayor valor neto (or heurístico)
+-- Si Alice tiene fondos, el principal es viable; si no, el reducido
+let swap_con_margen = swap_principal or swap_reducido;
+
+propose operacion_margen swap_con_margen;
+sign operacion_margen Alice;
+sign operacion_margen Bob;
+execute operacion_margen

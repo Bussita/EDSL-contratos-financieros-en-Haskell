@@ -1,0 +1,13 @@
+-- Definimos las partes del contrato
+let desembolso = scale 10000.0 one EUR;
+
+-- El repago del préstamo (yo pago al banco)
+let repago = give truncate 2026-03-20 scale 11000.0 one EUR;
+
+-- Un swap para cubrirme: recibo USD, entrego EUR
+let recibirUSD = scale 12000.0 one USD;
+let pagarEUR   = give scale 10000.0 one EUR;
+let swap       = truncate 2026-03-20 (recibirUSD and pagarEUR);
+
+-- El acuerdo completo
+let contratoFull = desembolso and repago and swap

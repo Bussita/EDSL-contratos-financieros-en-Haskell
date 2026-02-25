@@ -1,0 +1,21 @@
+-- Ejemplo 07: Opción call europea
+-- Una opción call da el derecho (no la obligación) de recibir el activo
+-- a un precio de ejercicio. Si el precio de mercado es menor al strike,
+-- es mejor no ejercer (elegir `zero`).
+--
+-- `or` elige la rama más favorable para "yo":
+--   - Ejercer: recibir AAPL valorado en USD al precio de mercado
+--   - No ejercer: zero (no pasa nada)
+--
+-- Con AAPL = 150 USD y strike = 140 USD → conviene ejercer.
+-- Con AAPL = 130 USD y strike = 140 USD → conviene no ejercer.
+
+let strike = 140.0;
+
+-- Recibir AAPL valorado en USD, pagando el strike
+let ejercer = scale AAPL one USD and give scale strike one USD;
+
+-- La opción: ejercer o no hacer nada
+let call_aapl = ejercer or zero;
+
+call_aapl

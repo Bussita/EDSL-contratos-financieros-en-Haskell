@@ -1,0 +1,21 @@
+-- Ejemplo 10: Collar
+-- Un collar combina la compra de una put (protección a la baja)
+-- con la venta de una call (limita la ganancia al alza).
+-- Es una estrategia de cobertura muy común.
+--
+-- Tengo AAPL. Compro protección si cae por debajo de 130
+-- y acepto que si sube por encima de 170 no me beneficio más.
+
+let floor_price  = 130.0;  -- protección a la baja
+let cap_price    = 170.0;  -- techo de ganancia
+
+-- Put comprada: derecho a vender a 130 (protege si AAPL < 130)
+let put_comprada = (give scale AAPL one USD and scale floor_price one USD) or zero;
+
+-- Call vendida: obligo a vender si AAPL > 170 (give = yo otorgo la opción)
+let call_vendida = give ((scale AAPL one USD and give scale cap_price one USD) or zero);
+
+-- El collar es la combinación de ambas posiciones
+let collar = put_comprada and call_vendida;
+
+collar

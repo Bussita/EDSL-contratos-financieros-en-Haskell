@@ -39,7 +39,6 @@ library:
     - Monads
     - Types
     - Graficos
-    - Wallet
 
 executables:
   financial-contracts-exe:

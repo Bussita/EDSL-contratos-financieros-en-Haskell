@@ -1,0 +1,19 @@
+-- Ejemplo 05: Préstamo con interés fijo
+-- El banco desembolsa capital hoy y el tomador devuelve capital + interés
+-- antes de una fecha límite.
+--
+-- Desde la perspectiva del tomador (yo = tomador, contraparte = banco):
+--   - Recibo el capital (one USD escalado)
+--   - Pago capital + interés (give, escalado, con truncate)
+
+let capital    = 10000.0;
+let tasa       = 1.1;    -- 10% de interés
+let vencimiento = 2027-06-01;
+
+let desembolso = scale capital one USD;
+let devolucion = give truncate vencimiento scale (capital * tasa) one USD;
+
+-- El préstamo completo: recibo ahora, pago después
+let prestamo = desembolso and devolucion;
+
+prestamo

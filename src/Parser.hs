@@ -3,63 +3,100 @@ module Parser where
 
 import Text.Parsec
 import Text.Parsec.String (Parser)
-import qualified Text.Parsec.Expr as E
 import qualified Text.Parsec.Token as T
 import Text.Parsec.Language (emptyDef)
 import Text.Read (readMaybe)
 import Data.Char (toUpper)
-import Data.Time (Day ,fromGregorian)
+import Data.Time (Day, fromGregorian)
 import Text.Parsec.Char (digit, char)
 
 import Types
 import AST
 
-lexer :: T.TokenParser ()
-lexer = T.makeTokenParser emptyDef {
-    T.reservedNames = ["zero", "one", "give", "and", "or", "truncate", "then", "scale", "get", "anytime", "let"],
-    T.reservedOpNames = ["+", "-", "*", "/", "=", ";"],
-    T.caseSensitive = False
-}
+-- Lexer
 
-reserved   = T.reserved lexer
-integer    = T.integer lexer
-float      = T.float lexer
-parens     = T.parens lexer
+lexer :: T.TokenParser ()
+lexer = T.makeTokenParser emptyDef
+  { T.reservedNames   = [ "zero", "one", "give", "and", "or"
+                        , "truncate", "then", "scale", "get", "anytime"
+                        , "let"
+                          -- comandos billetera
+                        , "deposit", "propose", "sign", "execute"
+                          -- observable
+                        , "balance"
+                        ]
+  , T.reservedOpNames = ["+", "-", "*", "/", "=", ";"]
+  , T.caseSensitive   = False
+  }
+
+reserved   = T.reserved   lexer
+integer    = T.integer    lexer
+float      = T.float      lexer
+parens     = T.parens     lexer
 identifier = T.identifier lexer
 reservedOp = T.reservedOp lexer
 whiteSpace = T.whiteSpace lexer
-semi       = T.semi lexer
+semi       = T.semi       lexer
 
 -- Comandos
+-- Punto de entrada: uno o más comandos separados por ';'.
 parserComm :: Parser Comm
 parserComm = chainl1 parserSingleComm (semi >> return Seq)
 
 parserSingleComm :: Parser Comm
-parserSingleComm = try parserAssign <|> parserEvalComm
+parserSingleComm =
+      try parserAssign
+  <|> try parserDeposit
+  <|> try parserPropose
+  <|> try parserSign
+  <|> try parserExecute
+  <|> parserEvalComm
 
 parserAssign :: Parser Comm
 parserAssign = do
-    reserved "let"
-    name <- identifier
-    reservedOp "="
-    c <- parserContract
-    return (Assign name c)
+  reserved "let"
+  name <- identifier
+  reservedOp "="
+  c <- parserContract
+  return (Assign name c)
+
+-- deposit <parte> <monto> <moneda>
+parserDeposit :: Parser Comm
+parserDeposit = do
+  reserved "deposit"
+  party <- identifier
+  amt   <- parserNumber
+  cur   <- parserCurrency
+  return (Deposit party cur amt)
+
+-- propose <nombre> <contrato>
+parserPropose :: Parser Comm
+parserPropose = do
+  reserved "propose"
+  name <- identifier
+  c    <- parserContract
+  return (Propose name c)
+
+-- sign <nombre> <parte>
+parserSign :: Parser Comm
+parserSign = do
+  reserved "sign"
+  name  <- identifier
+  party <- identifier
+  return (Sign name party)
+
+-- execute <nombre>
+parserExecute :: Parser Comm
+parserExecute = do
+  reserved "execute"
+  name <- identifier
+  return (Execute name)
 
 parserEvalComm :: Parser Comm
 parserEvalComm = Run <$> parserContract
 
 -- Contratos
-{-
-chainl es equivalente a
-parserContract = do
-    t <- parserTerm
-    rest t
-  where
-    rest acc = (do reserved "or"
-                   t <- parserTerm
-                   rest (Or acc t))
-              <|> return acc
--}
+
 parserContract :: Parser Contract
 parserContract = chainl1 parserTerm (reserved "or" >> return Or)
 
@@ -70,35 +107,31 @@ parserFactor :: Parser Contract
 parserFactor = chainl1 parserPrefix (reserved "then" >> return Then)
 
 parserPrefix :: Parser Contract
-parserPrefix = parserGive
-              <|> parserGet
-              <|> parserAnytime
-              <|> parserScale
-              <|> parserTruncate
-              <|> parserAtom
+parserPrefix =
+      parserGive
+  <|> parserGet
+  <|> parserAnytime
+  <|> parserScale
+  <|> parserTruncate
+  <|> parserAtom
 
-parserGive :: Parser Contract
-parserGive = reserved "give" >> (Give <$> parserPrefix)
-
-parserGet :: Parser Contract
-parserGet = reserved "get" >> (Get <$> parserPrefix)
+parserGive     = reserved "give"     >> (Give    <$> parserPrefix)
+parserGet      = reserved "get"      >> (Get     <$> parserPrefix)
+parserAnytime  = reserved "anytime"  >> (Anytime <$> parserPrefix)
 
 parserScale :: Parser Contract
 parserScale = do
-    reserved "scale"
-    o <- parserObservable
-    c <- parserPrefix
-    return (Scale o c)
-
-parserAnytime :: Parser Contract
-parserAnytime = reserved "anytime" >> (Anytime <$> parserPrefix)
+  reserved "scale"
+  o <- parserObservable
+  c <- parserPrefix
+  return (Scale o c)
 
 parserTruncate :: Parser Contract
 parserTruncate = do
-    reserved "truncate"
-    t <- parserTime
-    c <- parserPrefix
-    return (Truncate t c)
+  reserved "truncate"
+  t <- parserTime
+  c <- parserPrefix
+  return (Truncate t c)
 
 parserAtom :: Parser Contract
 parserAtom = parens parserContract <|> pZero <|> parserOne <|> parserVar
@@ -111,28 +144,29 @@ parserVar = Var <$> identifier
 
 parserOne :: Parser Contract
 parserOne = do
-    reserved "one"
-    c <- identifier
-    case readMaybe (map toUpper c) of
-        Just (curr :: Currency) -> return (One curr)
-        Nothing -> fail ("Error: " ++ c ++ " no es un tipo de moneda válido.")
+  reserved "one"
+  c <- identifier
+  case readMaybe (map toUpper c) of
+    Just (cur :: Currency) -> return (One cur)
+    Nothing -> fail ("'" ++ c ++ "' no es una moneda válida (USD, EUR, ARS, GBP).")
 
--- Fechas
+-- ─── Fechas ───────────────────────────────────────────────────────────────────
 
 parserTime :: Parser Date
 parserTime = do
-    y <- count 4 digit
-    _ <- char '-'
-    m <- count 2 digit
-    _ <- char '-'
-    d <- count 2 digit
-    whiteSpace
-    return (fromGregorian (read y) (read m) (read d))
+  y <- count 4 digit
+  _ <- char '-'
+  m <- count 2 digit
+  _ <- char '-'
+  d <- count 2 digit
+  whiteSpace
+  return (fromGregorian (read y) (read m) (read d))
 
--- Observables
+-- ─── Observables ─────────────────────────────────────────────────────────────
+
 parserObservable :: Parser (Obs Double)
 parserObservable = chainl1 parserMultDiv op
-  where 
+  where
     op = (reservedOp "+" >> return Add)
      <|> (reservedOp "-" >> return Sub)
 
@@ -143,24 +177,47 @@ parserMultDiv = chainl1 parserObsAtom op
      <|> (reservedOp "/" >> return Div)
 
 parserObsAtom :: Parser (Obs Double)
-parserObsAtom = parens parserObservable
-            <|> try parserNeg
-            <|> try parserKonst
-            <|> parserExternal
+parserObsAtom =
+      parens parserObservable
+  <|> try parserNeg
+  <|> try parserKonst
+  <|> try parserBalance   -- antes de parserExternal para evitar consumir "balance"
+  <|> parserExternal
 
+-- Observable: -<obs>
 parserNeg :: Parser (Obs Double)
 parserNeg = do
-    reservedOp "-"
-    o <- parserObsAtom
-    return (Neg o)
+  reservedOp "-"
+  o <- parserObsAtom
+  return (Neg o)
 
+-- Observable: número literal
 parserKonst :: Parser (Obs Double)
-parserKonst = do
-    n <- try float <|> (fromIntegral <$> integer)
-    return (Konst n)
+parserKonst = Konst <$> parserNumber
 
+-- Observable: balance <parte> <moneda>
+-- Permite cosas como:  scale (balance Alice USD) one USD
+parserBalance :: Parser (Obs Double)
+parserBalance = do
+  reserved "balance"
+  party <- identifier
+  cur   <- parserCurrency
+  return (Balance party cur)
+
+-- Observable: nombre externo (cotización del oráculo)
 parserExternal :: Parser (Obs Double)
-parserExternal = do
-    s <- identifier
-    return (External s)
+parserExternal = External <$> identifier
 
+-- Parsers auxiliares
+
+-- Parsea un número como Double (entero o flotante).
+parserNumber :: Parser Double
+parserNumber = try float <|> (fromIntegral <$> integer)
+
+-- Parsea un identificador de moneda (USD, EUR, ARS, GBP).
+parserCurrency :: Parser Currency
+parserCurrency = do
+  s <- identifier
+  case readMaybe (map toUpper s) of
+    Just (cur :: Currency) -> return cur
+    Nothing -> fail ("'" ++ s ++ "' no es una moneda válida (USD, EUR, ARS, GBP).")

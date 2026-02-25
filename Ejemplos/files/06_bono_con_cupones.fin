@@ -1,0 +1,23 @@
+-- Ejemplo 06: Bono con cupones
+-- Un bono clásico genera pagos periódicos (cupones) más la devolución
+-- del principal al vencimiento.
+-- Modelamos tres cupones anuales + devolución del principal.
+--
+-- `then` ejecuta el primero que produzca cashflows; como todos tienen
+-- fechas distintas y están vigentes, usamos `and` para combinarlos.
+
+let principal = 10000.0;
+let cupon     = 500.0;   -- 5% anual sobre 10000
+
+-- Cupones anuales
+let cupon1 = truncate 2026-12-31 scale cupon one USD;
+let cupon2 = truncate 2027-12-31 scale cupon one USD;
+let cupon3 = truncate 2028-12-31 scale cupon one USD;
+
+-- Devolución del principal al vencimiento
+let devolucion = truncate 2028-12-31 scale principal one USD;
+
+-- Bono completo: tres cupones más el principal
+let bono = cupon1 and cupon2 and cupon3 and devolucion;
+
+bono

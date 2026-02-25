@@ -1,0 +1,12 @@
+-- Ejemplo 03: Zero-coupon bond
+-- Un instrumento que promete un pago fijo en una fecha futura.
+-- `truncate` limita la vigencia: si la fecha ya pasó, no genera cashflows.
+
+-- Versión vigente (vence en 2027)
+let zcb_vigente = truncate 2027-01-01 scale 1000.0 one USD;
+
+-- Versión vencida (vence en 2025, ya pasó)
+let zcb_vencido = truncate 2025-01-01 scale 1000.0 one USD;
+
+-- El vigente genera cashflow, el vencido no (se comporta como zero)
+zcb_vigente and zcb_vencido

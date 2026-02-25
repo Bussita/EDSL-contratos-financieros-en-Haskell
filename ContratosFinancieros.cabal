@@ -30,7 +30,6 @@ library
       Monads
       Types
       Graficos
-      Wallet
   other-modules:
       Paths_ContratosFinancieros
   hs-source-dirs:

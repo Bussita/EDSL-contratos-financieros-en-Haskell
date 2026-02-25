@@ -1,0 +1,16 @@
+-- Ejemplo 09: Opción americana
+-- Una opción americana puede ejercerse en cualquier momento antes del
+-- vencimiento. Se modela con `anytime`, que en nuestra implementación
+-- evalúa inmediatamente (simplificación respecto al paper original).
+--
+-- En un sistema con evolución temporal completa, `anytime` aplicaría
+-- programación dinámica hacia atrás para encontrar el momento óptimo.
+
+let strike = 145.0;
+
+-- Call americana sobre AAPL: ejercible en cualquier momento
+let ejercer = scale AAPL one USD and give scale strike one USD;
+
+let call_americana = anytime (ejercer or zero);
+
+call_americana

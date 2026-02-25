@@ -1,0 +1,25 @@
+-- Ejemplo 20: Opción con ciclo completo de firma
+-- Una opción call sobre OIL con liquidación real.
+-- El comprador de la opción (Alice) paga una prima por adelantado,
+-- y si ejerce, recibe el valor de OIL menos el strike.
+--
+-- Con OIL = 80.5 y strike = 75 → la opción está "in the money".
+
+deposit Alice 5000 USD;
+deposit Bob   5000 USD;
+
+let strike = 75.0;
+
+-- Prima de la opción: Alice paga 200 USD a Bob por el derecho
+let prima = give scale 200.0 one USD;
+
+-- La opción en sí: recibir OIL en USD pagando el strike, o no ejercer
+let call_oil = (scale OIL one USD and give scale strike one USD) or zero;
+
+-- Contrato completo: pagar prima y adquirir la opción
+let opcion_completa = prima and call_oil;
+
+propose compra_opcion opcion_completa;
+sign compra_opcion Alice;
+sign compra_opcion Bob;
+execute compra_opcion

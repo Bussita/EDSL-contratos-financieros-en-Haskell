@@ -1,0 +1,17 @@
+-- Ejemplo 11: Straddle
+-- Un straddle combina una call y una put con el mismo strike.
+-- Es rentable cuando el activo se mueve mucho en cualquier dirección.
+-- El inversor gana si AAPL sube mucho O baja mucho respecto al strike.
+
+let strike = 150.0;
+
+-- Call: derecho a comprar AAPL al strike
+let call = (scale AAPL one USD and give scale strike one USD) or zero;
+
+-- Put: derecho a vender AAPL al strike
+let put  = (give scale AAPL one USD and scale strike one USD) or zero;
+
+-- Straddle: tengo ambos derechos simultáneamente
+let straddle = call and put;
+
+straddle

@@ -1,0 +1,14 @@
+-- Ejemplo 04: Currency swap
+-- Intercambio de monedas: yo pago USD y recibo EUR.
+-- Un swap es simplemente `and` de dos pagos en direcciones opuestas.
+
+let leg_usd = give scale 1000.0 one USD;
+let leg_eur = scale 1000.0 one EUR;
+
+-- Swap: pago USD, recibo EUR
+let swap_usd_eur = leg_usd and leg_eur;
+
+-- Swap inverso: recibo USD, pago EUR
+let swap_eur_usd = give swap_usd_eur;
+
+swap_usd_eur

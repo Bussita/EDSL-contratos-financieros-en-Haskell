@@ -1,0 +1,18 @@
+-- Ejemplo 14: Balance como observable
+-- El observable `balance <parte> <moneda>` consulta el saldo actual
+-- de una parte en las billeteras del intérprete.
+-- Esto permite contratos cuyo monto depende de los fondos disponibles.
+
+-- Primero cargamos fondos para que balance devuelva algo interesante
+deposit Alice 8000 USD;
+deposit Bob 3000 EUR;
+
+-- Contrato: Alice le paga a Bob exactamente lo que Alice tiene en USD
+-- (vaciado completo de la billetera de Alice en USD)
+let pago_total_alice = give scale (balance Alice USD) one USD;
+
+-- Contrato: recibir el 10% del saldo de Bob en EUR
+let diez_pct_bob = scale (balance Bob EUR * 0.1) one EUR;
+
+-- Evaluamos ambos
+pago_total_alice and diez_pct_bob
