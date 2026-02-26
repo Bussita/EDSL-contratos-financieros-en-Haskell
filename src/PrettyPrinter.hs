@@ -1,22 +1,13 @@
 module PrettyPrinter where
 
 import Data.Time (Day)
-import Data.List (intercalate)
 import qualified Data.Map as Map
 import Data.Map (Map)
 
 import AST
 import Types
 
--- Contratos
-{-
-Precedencias:
-  0 - or
-  1 - and
-  2 - then
-  3 - prefijos (give, get, scale, truncate, anytime)
-  4 - átomos (zero, one, var, paréntesis)
--}
+-- ─── Contratos ────────────────────────────────────────────────────────────────
 
 ppContract :: Contract -> String
 ppContract = ppContractPrec 0
@@ -35,15 +26,16 @@ ppContractPrec p (And c1 c2) =
 ppContractPrec p (Then c1 c2) =
   parensIf (p > 2) $ ppMaybeParens 2 c1 ++ " then " ++ ppMaybeParens 2 c2
 
-ppContractPrec p (Give c)     = parensIf (p > 3) $ "give "     ++ ppContractPrec 3 c
-ppContractPrec p (Get c)      = parensIf (p > 3) $ "get "      ++ ppContractPrec 3 c
-ppContractPrec p (Anytime c)  = parensIf (p > 3) $ "anytime "  ++ ppContractPrec 3 c
+ppContractPrec p (Give c)    = parensIf (p > 3) $ "give "    ++ ppContractPrec 3 c
+ppContractPrec p (Scale o c) = parensIf (p > 3) $ "scale "   ++ ppObs o ++ " " ++ ppContractPrec 3 c
+ppContractPrec p (Truncate d c) = parensIf (p > 3) $ "truncate " ++ ppDate d ++ " " ++ ppContractPrec 3 c
 
-ppContractPrec p (Scale o c) =
-  parensIf (p > 3) $ "scale " ++ ppObs o ++ " " ++ ppContractPrec 3 c
-
-ppContractPrec p (Truncate d c) =
-  parensIf (p > 3) $ "truncate " ++ ppDate d ++ " " ++ ppContractPrec 3 c
+-- | if <cond> then <c1> else <c2>
+ppContractPrec p (If cond c1 c2) =
+  parensIf (p > 3) $
+    "if " ++ ppObsBool cond
+    ++ " then " ++ ppContractPrec 3 c1
+    ++ " else " ++ ppContractPrec 3 c2
 
 ppMaybeParens :: Int -> Contract -> String
 ppMaybeParens prec child
@@ -62,13 +54,16 @@ infixPrec (And _ _)  = 1
 infixPrec (Then _ _) = 2
 infixPrec _          = 4
 
--- Observables
-{-
-Precedencias:
-  0 - suma, resta
-  1 - multiplicación, división
-  2 - átomos (constantes, externos, balance, paréntesis)
--}
+-- ─── Observables booleanos ────────────────────────────────────────────────────
+
+ppObsBool :: ObsBool -> String
+ppObsBool (Gt  a b) = ppObs a ++ " > "  ++ ppObs b
+ppObsBool (Lt  a b) = ppObs a ++ " < "  ++ ppObs b
+ppObsBool (Gte a b) = ppObs a ++ " >= " ++ ppObs b
+ppObsBool (Lte a b) = ppObs a ++ " <= " ++ ppObs b
+ppObsBool (Eq  a b) = ppObs a ++ " == " ++ ppObs b
+
+-- ─── Observables numéricos ────────────────────────────────────────────────────
 
 ppObs :: Show a => Obs a -> String
 ppObs = ppObsPrec 0
@@ -77,26 +72,25 @@ ppObsPrec :: Show a => Int -> Obs a -> String
 ppObsPrec _ (Konst x)       = showNum x
 ppObsPrec _ (External s)    = s
 ppObsPrec _ (Balance p cur) = "balance " ++ p ++ " " ++ ppCurrency cur
-
 ppObsPrec p (Add a b) = parensIf (p > 0) $ ppObsPrec 0 a ++ " + " ++ ppObsPrec 1 b
 ppObsPrec p (Sub a b) = parensIf (p > 0) $ ppObsPrec 0 a ++ " - " ++ ppObsPrec 1 b
 ppObsPrec p (Mul a b) = parensIf (p > 1) $ ppObsPrec 1 a ++ " * " ++ ppObsPrec 2 b
 ppObsPrec p (Div a b) = parensIf (p > 1) $ ppObsPrec 1 a ++ " / " ++ ppObsPrec 2 b
 ppObsPrec p (Neg a)   = parensIf (p > 1) $ "-" ++ ppObsPrec 2 a
 
--- Comandos
+-- ─── Comandos ─────────────────────────────────────────────────────────────────
 
 ppComm :: Comm -> String
-ppComm (Assign name c)        = "let " ++ name ++ " = " ++ ppContract c
-ppComm (Run c)                = ppContract c
-ppComm (Seq c1 c2)            = ppComm c1 ++ ";\n" ++ ppComm c2
-ppComm (Deposit party cur amt) =
-  "deposit " ++ party ++ " " ++ showDouble amt ++ " " ++ ppCurrency cur
-ppComm (Propose name c)       = "propose " ++ name ++ " " ++ ppContract c
-ppComm (Sign name party)      = "sign " ++ name ++ " " ++ party
-ppComm (Execute name)         = "execute " ++ name
+ppComm (Assign name c)         = "let " ++ name ++ " = " ++ ppContract c
+ppComm (Run c)                 = ppContract c
+ppComm (Seq c1 c2)             = ppComm c1 ++ ";\n" ++ ppComm c2
+ppComm (Deposit party cur amt) = "deposit " ++ party ++ " " ++ showDouble amt ++ " " ++ ppCurrency cur
+ppComm (Propose name c)        = "propose " ++ name ++ " " ++ ppContract c
+ppComm (Sign name party)       = "sign " ++ name ++ " " ++ party
+ppComm (Execute name)          = "execute " ++ name
+ppComm (SetFecha d)            = "setfecha " ++ ppDate d
 
--- Cashflows
+-- ─── Cashflows ────────────────────────────────────────────────────────────────
 
 ppCashflow :: Cashflow -> String
 ppCashflow cf =
@@ -114,7 +108,19 @@ ppCashflows cfs =
       sep    = replicate (length header) '-'
   in  unlines (header : sep : map ppCashflow cfs)
 
--- Billeteras
+-- ─── Historial ────────────────────────────────────────────────────────────────
+
+ppHistorial :: [HistorialEntry] -> String
+ppHistorial [] = "(sin ejecuciones registradas)"
+ppHistorial hs = unlines $ map ppHistorialEntry hs
+
+ppHistorialEntry :: HistorialEntry -> String
+ppHistorialEntry h =
+  "  [" ++ ppDate (hFecha h) ++ "] " ++ hNombre h
+  ++ "  (" ++ hPartyA h ++ " / " ++ hPartyB h ++ ")\n"
+  ++ unlines (map (("    " ++) . ppCashflow) (hCashflows h))
+
+-- ─── Billeteras ───────────────────────────────────────────────────────────────
 
 ppWallets :: Wallets -> String
 ppWallets ws
@@ -140,7 +146,7 @@ ppWallet ws party =
 ppBalEntry :: (Currency, Double) -> String
 ppBalEntry (cur, bal) = "    " ++ padR 6 (ppCurrency cur) ++ showDouble bal
 
--- Contratos pendientes
+-- ─── Contratos pendientes ─────────────────────────────────────────────────────
 
 ppPendings :: Map String PendingContract -> String
 ppPendings store
@@ -158,14 +164,14 @@ ppPending (name, pc) =
       ++ "     " ++ pcPartyA pc ++ " " ++ statusA
       ++ "  |  " ++ pcPartyB pc ++ " " ++ statusB
 
--- Errores
+-- ─── Errores ──────────────────────────────────────────────────────────────────
 
 ppError :: EvalError -> String
 ppError DivByZero      = "ERROR (DivByZero): división por cero"
 ppError (UnknownObs s) = "ERROR (UnknownObs): observable desconocido '" ++ s ++ "'"
 ppError (EvalMsg s)    = "ERROR (EvalMsg): " ++ s
 
--- Primitivas
+-- ─── Primitivas ───────────────────────────────────────────────────────────────
 
 ppCurrency :: Currency -> String
 ppCurrency USD = "USD"

@@ -1,0 +1,11 @@
+setfecha 2026-01-01;
+deposit Bussa 10000 USD;
+deposit Banco 5000 USD;
+
+setfecha 2026-06-01;
+propose pago1 give scale 3000.0 one USD;
+sign pago1 Bussa; sign pago1 Banco; execute pago1;
+
+setfecha 2026-12-01;
+propose pago2 give scale 2000.0 one USD;
+sign pago2 Bussa; sign pago2 Banco; execute pago2

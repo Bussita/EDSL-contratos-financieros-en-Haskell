@@ -14,6 +14,6 @@ let importaciones = give scale 1000.0 one USD;
 let impuestos = give truncate 2026-04-30 scale 100000.0 one ARS;
 
 -- Balance completo
-let balance = ventas_locales and exportaciones and salarios and alquiler and importaciones and impuestos;
+let resultado = ventas_locales and exportaciones and salarios and alquiler and importaciones and impuestos;
 
-balance
+resultado

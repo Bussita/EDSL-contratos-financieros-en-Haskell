@@ -1,4 +1,6 @@
--- Ejemplo 7: Derivados con observables de mercado
+-- Ejemplo: Derivados con observables de mercado
+-- Muestra cómo usar observables de oráculo, operaciones aritméticas
+-- entre observables, y el operador de negación unaria.
 
 -- Contrato atado al precio del petróleo (OIL = 80.0 en el oráculo)
 let petrolero = scale OIL one USD;
@@ -6,12 +8,17 @@ let petrolero = scale OIL one USD;
 -- Contrato atado al precio de AAPL (AAPL = 150.0)
 let accionario = scale AAPL one USD;
 
--- Spread: ganancia si AAPL > OIL (compro lo barato, vendo lo caro)
-let compraOIL = scale OIL one USD;
-let vendoAAPL = give scale AAPL one USD;
-let spread = compraOIL and vendoAAPL;
+-- Spread entre dos activos: AAPL - OIL
+-- (cuánto más vale AAPL que OIL, en USD)
+let spread = scale (AAPL - OIL) one USD;
 
--- Comparar todos lado a lado
-let resumen = petrolero and accionario and spread;
+-- Negación de un observable: posición inversa al petróleo
+let inverso = scale (-OIL) one USD;
+
+-- Promedio de dos tasas de cambio como observable compuesto
+let promedio_tc = scale ((EUR_USD + GBP_USD) / 2.0) one USD;
+
+-- Resumen: posiciones + spread + posición inversa
+let resumen = petrolero and accionario and spread and inverso;
 
 resumen

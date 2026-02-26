@@ -11,3 +11,4 @@ dist-newstyle/
 *.swo
 *~
 .DS_Store
+output/

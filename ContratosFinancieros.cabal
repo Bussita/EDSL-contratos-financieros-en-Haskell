@@ -9,9 +9,9 @@ version:        0.1.0.0
 description:    Financial Contracts EDSL in Haskell
 homepage:       https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell#readme
 bug-reports:    https://github.com/Bussita/EDSL-contratos-financieros-en-Haskell/issues
-author:         Author
-maintainer:     example@example.com
-copyright:      2026
+author:         Santiago Bussanich
+maintainer:     santiagobussanich321@gmail.com
+copyright:      2026 Santiago Bussanich
 license:        MIT
 build-type:     Simple
 extra-source-files:
@@ -29,7 +29,7 @@ library
       Evaluator
       Monads
       Types
-      Graficos
+      Exportar
   other-modules:
       Paths_ContratosFinancieros
   hs-source-dirs:
@@ -38,7 +38,9 @@ library
   build-depends:
       base >=4.7 && <5
     , containers >=0.6
+    , directory
     , exceptions
+    , filepath
     , haskeline
     , mtl
     , parsec >=3.1.14
@@ -58,7 +60,9 @@ executable financial-contracts-exe
       ContratosFinancieros
     , base >=4.7 && <5
     , containers >=0.6
+    , directory
     , exceptions
+    , filepath
     , haskeline
     , mtl
     , parsec >=3.1.14

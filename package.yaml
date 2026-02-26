@@ -2,9 +2,9 @@ name:                ContratosFinancieros
 version:             0.1.0.0
 github:              "Bussita/EDSL-contratos-financieros-en-Haskell"
 license:             MIT
-author:              "Author"
-maintainer:          "example@example.com"
-copyright:           "2026"
+author:              "Santiago Bussanich"
+maintainer:          "santiagobussanich321@gmail.com"
+copyright:           "2026 Santiago Bussanich"
 
 extra-source-files:
 - README.md
@@ -21,6 +21,8 @@ dependencies:
 - transformers
 - haskeline
 - exceptions
+- directory
+- filepath
 
 ghc-options:
 - -Wall
@@ -38,7 +40,7 @@ library:
     - Evaluator
     - Monads
     - Types
-    - Graficos
+    - Exportar
 
 executables:
   financial-contracts-exe:
@@ -50,4 +52,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - ContratosFinancieros
+    - mtl
+    - haskeline
+    - exceptions
 

@@ -1,0 +1,26 @@
+-- Demo completa: múltiples contratos, billeteras, firmas y evolución temporal
+setfecha 2026-01-15;
+deposit Alice 10000 USD;
+deposit Alice 5000 EUR;
+deposit Bob 8000 USD;
+deposit Bob 3000 EUR;
+deposit Bob 500000 ARS;
+deposit Alice 200000 ARS;
+let swap = scale 2000.0 (give one USD and one EUR);
+let bono = truncate 2027-01-01 scale 1000.0 one USD;
+let opcion = scale 500.0 one USD or zero;
+setfecha 2026-03-01;
+propose miSwap swap;
+sign miSwap Alice;
+sign miSwap Bob;
+execute miSwap;
+setfecha 2026-06-15;
+propose miBono bono;
+sign miBono Alice;
+sign miBono Bob;
+execute miBono;
+setfecha 2026-09-01;
+propose pagoARS give scale 100000.0 one ARS;
+sign pagoARS Alice;
+sign pagoARS Bob;
+execute pagoARS

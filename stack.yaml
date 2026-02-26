@@ -5,3 +5,6 @@ packages:
 
 ghc-options:
   "$everything": -O2
+
+extra-deps:
+- gloss-1.13.2.2

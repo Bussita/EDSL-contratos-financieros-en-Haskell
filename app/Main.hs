@@ -20,9 +20,9 @@ import Parser
 import PrettyPrinter
 import Evaluator
 import Monads
-import Graficos
+import Exportar
 
--- Punto de entrada
+-- ─── Punto de entrada ─────────────────────────────────────────────────────────
 
 main :: IO ()
 main = runInputT defaultSettings main'
@@ -48,7 +48,7 @@ main' = do
         , contraparte = "Banco"
         }
 
-  let initialState = emptyInterpState { isQuotes = defaultQuotes }
+  let initialState = (emptyInterpState today) { isQuotes = defaultQuotes }
 
   readevalprint args (initialState, defaultEnv)
 
@@ -63,16 +63,16 @@ ioExceptionCatcher :: IOException -> IO (Maybe a)
 ioExceptionCatcher _ = return Nothing
 
 -- ─── Estado del REPL ──────────────────────────────────────────────────────────
--- El estado del intérprete ahora es (InterpState, Env).
--- InterpState  → lo mutable del lenguaje (wallets, contratos, pending, cotizaciones)
--- Env          → lo que Interp lee con `ask` (fecha, oráculo, partes actuales)
+-- El estado del intérprete es (InterpState, Env).
+-- InterpState  → lo mutable del lenguaje (wallets, contratos, pending, cotizaciones, fecha)
+-- Env          → lo que Interp lee con `ask` (oráculo, partes actuales)
 --
 -- Los comandos REPL que modifican cotizaciones o partes actualizan el Env
 -- directamente; los demás sólo modifican InterpState vía runInterp.
 
 type ReplState = (InterpState, Env)
 
--- Bucle REPL
+-- ─── Bucle REPL ───────────────────────────────────────────────────────────────
 
 readevalprint :: [String] -> ReplState -> InputT IO ()
 readevalprint _args st0 =
@@ -91,7 +91,7 @@ readevalprint _args st0 =
     lift $ putStrLn ("Intérprete de " ++ iname ++ ".\nEscriba :? para recibir ayuda.")
     rec st0
 
--- Comandos
+-- ─── Comandos ─────────────────────────────────────────────────────────────────
 
 data Command
   = EvalComm     String
@@ -102,9 +102,12 @@ data Command
   | ShowStore
   | SetQuote     String
   | SetPartes    String
-  | Grafico      String
   | ShowWallet   String
   | ShowPending
+  | ShowHistorial
+  | ReplSetFecha String
+  | ExportHTML   String
+  | ExportASTSVG String
   | Quit
   | Help
   | Noop
@@ -123,7 +126,7 @@ interpretCommand x = lift $
         _               -> putStrLn "Comando ambigüo." >> return Noop
     else return (EvalComm x)
 
--- Manejo de comandos
+-- ─── Manejo de comandos ───────────────────────────────────────────────────────
 
 handleCommand :: ReplState -> Command -> InputT IO (Maybe ReplState)
 handleCommand _   Quit = lift (putStrLn "Saliendo del intérprete financiero.") >> return Nothing
@@ -131,9 +134,12 @@ handleCommand st  Noop = return (Just st)
 handleCommand st  Help = lift (putStr (helpTxt commands)) >> return (Just st)
 
 handleCommand st (PrintAST s) = do
+  let ist = fst st
   case parse parserContract "<interactive>" s of
     Left err  -> lift $ putStrLn $ "Error de parseo: " ++ show err
-    Right ast -> lift $ putStrLn $ "AST:\n" ++ show ast
+    Right ast -> case substContract (isContracts ist) ast of
+      Left err       -> lift $ putStrLn $ ppError err
+      Right resolved -> lift $ putStrLn $ "AST:\n" ++ show resolved
   return (Just st)
 
 handleCommand st (PrintPP s) = do
@@ -212,22 +218,8 @@ handleCommand st (LoadFile path) = do
                           >> return (Just st)
             Right comm -> runCommInRepl st comm ("Archivo " ++ path' ++ " cargado correctamente.")
 
-handleCommand st (Grafico s) = do
-  let (ist, env) = st
-  case parse parserContract "<interactive>" s of
-    Left err       -> lift $ putStrLn $ "Error de parseo: " ++ show err
-    Right contract ->
-      case substContract (isContracts ist) contract of
-        Left err       -> lift $ putStrLn $ ppError err
-        Right resolved ->
-          case runInterp (evalContract resolved) ist env of
-            Left err              -> lift $ putStrLn $ ppError err
-            Right (((), _), cfs)  ->
-              lift $ putStrLn $ "\n" ++ ppGrafico (yo env) cfs
-  return (Just st)
-
--- Evaluación de un comando del lenguaje (la ruta principal del REPL).
--- Incluye: let, run, deposit, propose, sign, execute.
+-- | Evaluación de un comando del lenguaje (la ruta principal del REPL).
+--   Incluye: let, run, deposit, propose, sign, execute.
 handleCommand st (EvalComm s) = do
   case parse parserComm "<interactive>" s of
     Left err   -> lift (putStrLn $ "Error de parseo: " ++ show err) >> return (Just st)
@@ -248,9 +240,49 @@ handleCommand st (EvalContract s) = do
               lift $ putStr $ ppCashflows cfs
               return (Just st)
 
--- Helper: ejecutar un Comm y actualizar el ReplState
 
--- Corre un Comm via Interp, actualiza el InterpState y muestra resultados.
+handleCommand (ist, env) (ReplSetFecha s) =
+  case parse parserTime "<interactive>" s of
+    Left err -> do
+      lift $ putStrLn $ "Fecha inválida: " ++ show err
+      return (Just (ist, env))
+    Right d  -> do
+      let newIst = ist { isFechaHoy = d }
+          newEnv = env { fechaHoy = d }
+      lift $ putStrLn $ "Fecha actualizada a " ++ show d
+      return (Just (newIst, newEnv))
+
+handleCommand st ShowHistorial = do
+  lift $ putStrLn $ ppHistorial (isHistorial (fst st))
+  return (Just st)
+
+handleCommand (ist, env) (ExportHTML s) = do
+  let path = if null s then "reporte.html" else s
+  msg <- lift $ exportarHTML ist env path
+  lift $ putStrLn msg
+  return (Just (ist, env))
+
+handleCommand st (ExportASTSVG s) = do
+  let (ist, _env) = st
+      (contractStr, pathStr) = parseGraficoArg s
+      defaultName = trim contractStr ++ ".svg"
+      path = case pathStr of
+               Just p  -> p
+               Nothing -> defaultName
+  case parse parserContract "<interactive>" contractStr of
+    Left err -> lift $ putStrLn $ "Error de parseo: " ++ show err
+    Right c  ->
+      case substContract (isContracts ist) c of
+        Left err -> lift $ putStrLn $ ppError err
+        Right resolved -> do
+          msg <- lift $ exportarASTSVG resolved path
+          lift $ putStrLn msg
+  return (Just st)
+  where trim = reverse . dropWhile (== ' ') . reverse . dropWhile (== ' ')
+
+-- ─── Helper: ejecutar un Comm y actualizar el ReplState ──────────────────────
+
+-- | Corre un Comm via Interp, actualiza el InterpState y muestra resultados.
 --   `successMsg` se muestra si no hubo cashflows (ej. "asignado correctamente").
 runCommInRepl :: ReplState -> Comm -> String -> InputT IO (Maybe ReplState)
 runCommInRepl (ist, env) comm successMsg = do
@@ -259,6 +291,7 @@ runCommInRepl (ist, env) comm successMsg = do
       lift $ putStrLn $ ppError err
       return (Just (ist, env))
     Right (((), newIst), cfs) -> do
+      let newEnv = env { fechaHoy = isFechaHoy newIst }
       lift $ do
         if null cfs
           then when (not (null successMsg)) $ putStrLn successMsg
@@ -266,9 +299,8 @@ runCommInRepl (ist, env) comm successMsg = do
             putStr $ ppCashflows cfs
             -- Si el comando fue Execute, mostrar billeteras afectadas
             showWalletDiff ist newIst cfs
-      return (Just (newIst, env))
-
--- Muestra las billeteras de las partes involucradas en los cashflows.
+      return (Just (newIst, newEnv))
+-- | Muestra las billeteras de las partes involucradas en los cashflows.
 showWalletDiff :: InterpState -> InterpState -> [Cashflow] -> IO ()
 showWalletDiff _old new cfs = do
   let parties = uniqueParties cfs
@@ -284,7 +316,15 @@ uniqueParties cfs =
     nubOrd []     = []
     nubOrd (x:xs) = x : nubOrd (filter (/= x) xs)
 
--- Auxiliares
+-- ─── Auxiliares ───────────────────────────────────────────────────────────────
+
+parseGraficoArg :: String -> (String, Maybe FilePath)
+parseGraficoArg s =
+  case break (== '>') s of
+    (contrato, [])     -> (trim contrato, Nothing)
+    (contrato, _:path) -> (trim contrato, Just (trim path))
+  where
+    trim = reverse . dropWhile (== ' ') . reverse . dropWhile (== ' ')
 
 hasAssign :: Comm -> Bool
 hasAssign (Assign _ _) = True
@@ -296,7 +336,7 @@ isCommentOrEmpty s =
   let trimmed = dropWhile isSpace s
   in  null trimmed || isPrefixOf "--" trimmed
 
--- Tabla de comandos
+-- ─── Tabla de comandos ────────────────────────────────────────────────────────
 
 data InteractiveCommand = Cmd [String] String (String -> Command) String
 
@@ -309,10 +349,13 @@ commands =
   , Cmd [":store"]   ""                        (const ShowStore) "Mostrar contratos definidos"
   , Cmd [":quote"]   "[<nombre> <val>]"        SetQuote          "Ver/definir cotización (ej: :quote OIL 85.0)"
   , Cmd [":partes"]  "[<yo> <contra>]"         SetPartes         "Ver/cambiar partes (ej: :partes Santiago HSBC)"
-  , Cmd [":grafico"] "<contrato>"              Grafico           "Gráfico de flujos de caja"
   , Cmd [":wallet"]  "[<parte>]"               ShowWallet        "Ver billetera(s)"
-  , Cmd [":pending"] ""                        (const ShowPending) "Ver contratos pendientes"
-  , Cmd [":quit"]    ""                        (const Quit)      "Salir del intérprete"
+  , Cmd [":pending"]    ""                      (const ShowPending)   "Ver contratos pendientes"
+  , Cmd [":setfecha"]   "<YYYY-MM-DD>"           ReplSetFecha          "Cambiar fecha de evaluación"
+  , Cmd [":historial"]  ""                      (const ShowHistorial) "Ver historial de ejecuciones"
+  , Cmd [":reporte"]    "[<archivo.html>]"       ExportHTML           "Exportar reporte HTML completo"
+  , Cmd [":ast-svg"]    "<contrato> > <archivo>" ExportASTSVG         "Exportar AST del contrato a SVG"
+  , Cmd [":quit"]       ""                       (const Quit)         "Salir del intérprete"
   , Cmd [":help",":?"] ""                      (const Help)      "Mostrar esta lista de comandos"
   ]
 
@@ -327,6 +370,8 @@ helpTxt cs =
   ++ "  propose <nombre> <contrato>  proponer contrato con firma\n"
   ++ "  sign <nombre> <parte>        firmar contrato pendiente\n"
   ++ "  execute <nombre>             ejecutar contrato firmado\n"
+  ++ "  if <cond> then <c> else <c>  condicional sobre observables\n"
+  ++ "  setfecha YYYY-MM-DD            cambiar fecha de evaluación\n"
   ++ "  c1 ; c2                      secuenciar comandos\n\n"
   ++ "Comandos del REPL:\n"
   ++ unlines

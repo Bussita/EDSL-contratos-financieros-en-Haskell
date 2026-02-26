@@ -55,7 +55,7 @@
     numbers=left,
     numbersep=5pt,
     frame=single,
-    morekeywords={let, zero, one, give, and, or, truncate, then, scale, get, anytime},
+    morekeywords={let, zero, one, give, and, or, truncate, then, scale, if, else, deposit, propose, sign, execute, setfecha, balance},
     morecomment=[l]{--},
     literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1 {→}{{$\rightarrow$}}1
 }
@@ -97,12 +97,17 @@
     {\large \textbf{Alumno}}\\[0.2cm]
     {\large Bussanich, Santiago --- Legajo: 6488/2}\\[3cm]
     
-    {\large 17 de Febrero, 2026}
+    {\large 26 de Febrero, 2026}
     
     \vfill
 \end{titlepage}
 
-\section{Descripción del proyecto.}
+\tableofcontents
+\newpage
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Descripción del proyecto}
+% ═══════════════════════════════════════════════════════════════════════════════
 
 \subsection{Introducción}
 
@@ -130,24 +135,20 @@ En su paper \textit{``Composing Contracts: An Adventure in Financial Engineering
     \item \texttt{scale o c}: multiplica todos los montos del contrato \texttt{c} por el valor del observable \texttt{o}. Es lo que permite pasar de ``una unidad de USD'' a ``1000 USD'' (con \texttt{scale 1000.0 one USD}), o vincular un contrato a un precio de mercado variable (con \texttt{scale OIL one USD}).
 
     \item \texttt{truncate d c}: limita la vigencia del contrato \texttt{c} hasta la fecha \texttt{d}. Si la fecha actual es posterior a \texttt{d}, el contrato no genera flujos de caja (se comporta como \texttt{zero}). Es importante notar que \texttt{truncate} no programa un pago para la fecha \texttt{d}, sino que establece un horizonte de vencimiento: el contrato es válido \textbf{hasta} esa fecha.
-
-    \item \texttt{get c}: adquiere el contrato \texttt{c} de forma inmediata. En el paper original, \texttt{get} fija el momento de adquisición al instante actual, pero en nuestra implementación simplificada se comporta como la identidad.
-
-    \item \texttt{anytime c}: permite ejercer el contrato \texttt{c} en cualquier momento que el titular considere conveniente. Modela opciones americanas, donde el derecho puede ejercerse en cualquier punto antes del vencimiento. En nuestra implementación simplificada, se evalúa inmediatamente.
 \end{itemize}
 
 Este enfoque composicional permite construir contratos arbitrariamente complejos a partir de piezas simples, de la misma manera en que un programa se construye a partir de expresiones y sentencias.
 
 \subsubsection{Observables}
 
-Los observables representan valores que pueden variar en el tiempo y que son consultados durante la evaluación de un contrato. Típicamente se trata de precios de mercado, tasas de cambio, o índices financieros. La idea de éstos es que representen alguna cantidad que pueda ser medida objetivamente. Por ejemplo, el valor al que cotiza el dólar en Argentina hoy puede ser buscado y verificado por ambas partes mientras que el valor que yo le doy a mi propiedad puede ser subjetivo si es que no llamo a un tasador.
+Los observables representan valores que pueden variar en el tiempo y que son consultados durante la evaluación de un contrato. Típicamente se trata de precios de mercado, tasas de cambio, o índices financieros. La idea de éstos es que representen alguna cantidad que pueda ser medida objetivamente. Por ejemplo, el valor al que cotiza el dólar en Argentina hoy puede ser buscado y verificado por ambas partes, mientras que el valor subjetivo que una persona le asigna a su propiedad puede no serlo.
 
-En nuestro lenguaje, los observables se utilizan dentro del constructor \texttt{scale} para determinar el factor de escala que se aplica a los flujos de caja generados por un contrato.
-Un observable puede ser una constante numérica (por ejemplo, \texttt{1000.0}) o un valor externo que se obtiene de un oráculo (por ejemplo, \texttt{OIL} para el precio del petróleo). Además, es posible combinar observables mediante operaciones aritméticas (\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}).
+En nuestro lenguaje, los observables se utilizan dentro del constructor \texttt{scale} para determinar el factor de escala que se aplica a los flujos de caja generados por un contrato, y dentro de los condicionales \texttt{if} para tomar decisiones basadas en comparaciones numéricas.
+Un observable puede ser una constante numérica (por ejemplo, \texttt{1000.0}), un valor externo que se obtiene de un oráculo (por ejemplo, \texttt{OIL} para el precio del petróleo), o una consulta de saldo de billetera (por ejemplo, \texttt{balance Alice USD}). Además, es posible combinar observables mediante operaciones aritméticas (\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}).
 
 \subsection{Objetivo}
 
-En este trabajo desarrollamos un \textbf{Embedded Domain Specific Language} (EDSL) implementado en Haskell para modelar y evaluar contratos financieros. El lenguaje, al que llamamos \textit{Financial Contracts EDSL}, permite:
+En este trabajo desarrollamos un \textbf{Embedded Domain Specific Language} (EDSL) implementado en Haskell para modelar, evaluar y simular contratos financieros. El lenguaje, al que llamamos \textit{Financial Contracts EDSL}, permite:
 
 \begin{enumerate}[nosep]
     \item \textbf{Definir} contratos financieros de forma declarativa y composicional.
@@ -156,15 +157,21 @@ En este trabajo desarrollamos un \textbf{Embedded Domain Specific Language} (EDS
     \item \textbf{Componer} contratos de forma modular usando los combinadores del paper.
     \item \textbf{Nombrar} contratos con \texttt{let} y reutilizarlos como variables.
     \item \textbf{Pretty-printing} contratos con paréntesis mínimos respetando precedencias.
+    \item \textbf{Simular} la ejecución con billeteras, verificación de saldos y firmas duales.
+    \item \textbf{Condicionar} contratos a observables booleanos con \texttt{if}/\texttt{else}.
+    \item \textbf{Avanzar en el tiempo} con \texttt{setfecha}, observando la evolución temporal de las billeteras.
+    \item \textbf{Exportar} resultados a reportes HTML con gráficos SVG embebidos, y diagramas de AST.
 \end{enumerate}
 
-El lenguaje se presenta con un REPL interactivo que permite definir, componer, evaluar y visualizar contratos financieros de forma inmediata. Se trata de un primer acercamiento a la implementación del paper de Peyton Jones et al., con simplificaciones en la evaluación de \texttt{or}, \texttt{then}, \texttt{get} y \texttt{anytime}.
+El lenguaje se presenta con un REPL interactivo que permite definir, componer, evaluar y visualizar contratos financieros de forma inmediata. Se trata de una implementación del paper de Peyton Jones et al., con simplificaciones en la evaluación de \texttt{or} y \texttt{then}, y extensiones significativas en cuanto a billeteras, firmas, condicionales, exportación y visualización.
 
-\section{El lenguaje.}
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{El lenguaje}
+% ═══════════════════════════════════════════════════════════════════════════════
 
 \subsection{Sintaxis abstracta}
 
-La sintaxis abstracta del lenguaje se divide en tres categorías principales: contratos, observables y comandos.
+La sintaxis abstracta del lenguaje se divide en cuatro categorías principales: contratos, observables numéricos, observables booleanos y comandos.
 
 \begin{center}
 \begin{tabular}{r c l}
@@ -176,19 +183,29 @@ La sintaxis abstracta del lenguaje se divide en tres categorías principales: co
     & $|$ & \textit{contract} \texttt{then} \textit{contract} \\
     & $|$ & \texttt{scale} \textit{obs} \textit{contract} \\
     & $|$ & \texttt{truncate} \textit{date} \textit{contract} \\
-    & $|$ & \texttt{get} \textit{contract} \\
-    & $|$ & \texttt{anytime} \textit{contract} \\
+    & $|$ & \texttt{if} \textit{obsBool} \texttt{then} \textit{contract} \texttt{else} \textit{contract} \\
     & $|$ & \textit{variable} \\[10pt]
 \textit{obs} & ::= & \textit{number} \\
     & $|$ & \textit{identifier} \\
+    & $|$ & \texttt{balance} \textit{party} \textit{currency} \\
     & $|$ & \textit{obs} \texttt{+} \textit{obs} \\
     & $|$ & \textit{obs} \texttt{-} \textit{obs} \\
     & $|$ & \textit{obs} \texttt{*} \textit{obs} \\
     & $|$ & \textit{obs} \texttt{/} \textit{obs} \\
     & $|$ & \texttt{-} \textit{obs} \\[10pt]
+\textit{obsBool} & ::= & \textit{obs} \texttt{>} \textit{obs} \\
+    & $|$ & \textit{obs} \texttt{<} \textit{obs} \\
+    & $|$ & \textit{obs} \texttt{>=} \textit{obs} \\
+    & $|$ & \textit{obs} \texttt{<=} \textit{obs} \\
+    & $|$ & \textit{obs} \texttt{==} \textit{obs} \\[10pt]
 \textit{comm} & ::= & \texttt{let} \textit{variable} \texttt{=} \textit{contract} \\
     & $|$ & \textit{comm} \texttt{;} \textit{comm} \\
-    & $|$ & \textit{contract} \\[10pt]
+    & $|$ & \textit{contract} \\
+    & $|$ & \texttt{deposit} \textit{party} \textit{amount} \textit{currency} \\
+    & $|$ & \texttt{propose} \textit{name} \textit{contract} \\
+    & $|$ & \texttt{sign} \textit{name} \textit{party} \\
+    & $|$ & \texttt{execute} \textit{name} \\
+    & $|$ & \texttt{setfecha} \textit{date} \\[10pt]
 \textit{currency} & ::= & \texttt{USD} $|$ \texttt{EUR} $|$ \texttt{ARS} $|$ \texttt{GBP} \\[5pt]
 \textit{date} & ::= & \texttt{YYYY-MM-DD} \\
 \end{tabular}
@@ -207,24 +224,32 @@ La sintaxis concreta sigue la gramática de precedencias implementada en el pars
 \textit{rest} & ::= & \textit{letter} \textit{rest} $|$ \textit{digit} \textit{rest} $|$ $\epsilon$ \\[10pt]
 
 \textit{comm} & ::= & \textit{singleComm}  \texttt{';'} \textit{comm} $|$ \textit{singleComm} \\
-\textit{singleComm} & ::= & \textit{assign} $|$ \textit{evalComm} \\
+\textit{singleComm} & ::= & \textit{assign} $|$ \textit{deposit} $|$ \textit{propose} $|$ \textit{sign} $|$ \textit{execute} $|$ \textit{setfecha} $|$ \textit{evalComm} \\
 \textit{assign} & ::= & \texttt{'let'} \textit{identifier} \texttt{'='} \textit{contract} \\
+\textit{deposit} & ::= & \texttt{'deposit'} \textit{identifier} \textit{number} \textit{currency} \\
+\textit{propose} & ::= & \texttt{'propose'} \textit{identifier} \textit{contract} \\
+\textit{sign} & ::= & \texttt{'sign'} \textit{identifier} \textit{identifier} \\
+\textit{execute} & ::= & \texttt{'execute'} \textit{identifier} \\
+\textit{setfecha} & ::= & \texttt{'setfecha'} \textit{date} \\
 \textit{evalComm} & ::= & \textit{contract} \\[10pt]
 
 \textit{contract} & ::= & \textit{term} \texttt{'or'} \textit{contract} $|$ \textit{term} \\
 \textit{term} & ::= & \textit{factor}  \texttt{'and'} \textit{term} $|$ \textit{factor} \\
 \textit{factor} & ::= & \textit{prefix}  \texttt{'then'} \textit{factor} $|$ \textit{prefix} \\
 \textit{prefix} & ::= & \texttt{'give'} \textit{prefix} \\
-    & $|$ & \texttt{'get'} \textit{prefix} \\
-    & $|$ & \texttt{'anytime'} \textit{prefix} \\
     & $|$ & \texttt{'scale'} \textit{observable} \textit{prefix} \\
     & $|$ & \texttt{'truncate'} \textit{date} \textit{prefix} \\
+    & $|$ & \texttt{'if'} \textit{obsBool} \texttt{'then'} \textit{prefix} \texttt{'else'} \textit{prefix} \\
     & $|$ & \textit{atom} \\
 \textit{atom} & ::= & \texttt{'('} \textit{contract} \texttt{')'} $|$ \texttt{'zero'} $|$ \texttt{'one'} \textit{currency} $|$ \textit{identifier} \\[10pt]
 
+\textit{obsBool} & ::= & \textit{observable} \textit{boolOp} \textit{observable} \\
+\textit{boolOp} & ::= & \texttt{'>'} $|$ \texttt{'<'} $|$ \texttt{'>='} $|$ \texttt{'<='} $|$ \texttt{'=='} \\[10pt]
+
 \textit{observable} & ::= & \textit{obsTerm} \texttt{'+'} \textit{obsTerm} $|$ \textit{obsTerm} \texttt{'-'} \textit{obsTerm} $|$ \textit{obsTerm}\\
 \textit{obsTerm} & ::= & \textit{obsAtom} \texttt{'*'} \textit{obsAtom} $|$ \textit{obsAtom} \texttt{'/'} \textit{obsAtom} $|$ \textit{obsAtom} \\
-\textit{obsAtom} & ::= & \texttt{'('} \textit{observable} \texttt{')'} $|$ \textit{float} $|$ \textit{nat} $|$ \textit{identifier} \\[10pt]
+\textit{obsAtom} & ::= & \texttt{'('} \textit{observable} \texttt{')'} $|$ \texttt{'-'} \textit{obsAtom} $|$ \textit{float} $|$ \textit{nat} \\
+    & $|$ & \texttt{'balance'} \textit{identifier} \textit{currency} $|$ \textit{identifier} \\[10pt]
 
 \textit{date} & ::= & \textit{digit}$^4$ \texttt{'-'} \textit{digit}$^2$ \texttt{'-'} \textit{digit}$^2$ \\
 \textit{currency} & ::= & \texttt{'USD'} $|$ \texttt{'EUR'} $|$ \texttt{'ARS'} $|$ \texttt{'GBP'} \\
@@ -236,19 +261,10 @@ La sintaxis concreta sigue la gramática de precedencias implementada en el pars
 Para comprender mejor la semántica del lenguaje, veamos algunos ejemplos concretos. El contrato financiero más básico que podemos expresar es un \textit{zero-coupon bond}: un instrumento que promete un pago fijo en una fecha futura.
 
 \begin{lstlisting}[style=finstyle, caption={Zero-coupon bond (basico.fin)}]
--- Ejemplo 1: Contratos basicos
 -- Un zero-coupon bond: recibir 1000 USD antes del 2027-01-01
-
--- Definimos un pago simple
 let pago = one USD;
-
--- Le damos escala
 let bono = scale 1000.0 pago;
-
--- Lo limitamos en el tiempo
 let zcb = truncate 2027-01-01 bono;
-
--- Evaluamos
 zcb
 \end{lstlisting}
 
@@ -257,45 +273,46 @@ Este programa define un contrato que genera un pago de 1000 USD con vencimiento 
 Un ejemplo más interesante es un \textit{currency swap}, donde una parte paga en una moneda y recibe en otra:
 
 \begin{lstlisting}[style=finstyle, caption={Currency swap (swap.fin)}]
--- Ejemplo 2: Swap de monedas
 -- Un currency swap: yo pago USD y recibo EUR
-
 let pagoUSD = give one USD;
 let cobroEUR = one EUR;
-
--- El swap es la combinacion de ambos
 let swap = pagoUSD and cobroEUR;
-
--- Escalamos a cantidades reales
 scale 1000.0 swap
 \end{lstlisting}
 
 Aquí utilizamos \texttt{give} para invertir la dirección del pago y \texttt{and} para combinar ambas obligaciones. Finalmente, \texttt{scale 1000.0} amplifica los montos a cantidades significativas.
 
-Veamos un ejemplo que modela un préstamo con interés:
+Un ejemplo que combina billeteras, firmas y evolución temporal:
 
-\begin{lstlisting}[style=finstyle, caption={Préstamo con interés (prestamo.fin)}]
--- Ejemplo 8: Prestamo simple
--- Modelar un prestamo con interes.
+\begin{lstlisting}[style=finstyle, caption={Evolución temporal con billeteras (graficoTemporal.fin)}]
+setfecha 2026-01-01;
+deposit Bussa 10000 USD;
+deposit Banco 5000 USD;
 
--- El banco me presta 10000 USD hoy
-let desembolso = scale 10000.0 one USD;
+setfecha 2026-06-01;
+propose pago1 give scale 3000.0 one USD;
+sign pago1 Bussa; sign pago1 Banco; execute pago1;
 
--- Yo le devuelvo al banco (give = yo pago)
--- Capital + 10% de interes = 11000 USD, con vencimiento
-let devolucion = give truncate 2027-01-01 scale 11000.0 one USD;
-
--- El prestamo completo: recibo ahora, pago despues
-let prestamo = desembolso and devolucion;
-
-prestamo
+setfecha 2026-12-01;
+propose pago2 give scale 2000.0 one USD;
+sign pago2 Bussa; sign pago2 Banco; execute pago2
 \end{lstlisting}
 
-En este caso, el contrato modela un préstamo donde el banco desembolsa 10000 USD y el tomador devuelve 11000 USD (capital + 10\% de interés) antes de una fecha límite. El combinador \texttt{give} invierte el rol en la devolución: ahora es el usuario quien paga al banco. El resultado de la evaluación genera dos flujos de caja: uno entrante (el desembolso) y uno saliente (la devolución).
+Este ejemplo muestra el flujo completo de simulación: se fija una fecha inicial, se depositan fondos en las billeteras, se avanza en el tiempo, se proponen contratos, ambas partes firman, y se ejecutan. Al exportar un reporte HTML, se genera una tabla de eventos y un gráfico SVG que muestra la evolución de los saldos a lo largo del tiempo.
 
-\section{Manual de uso e instalación.}
+Finalmente, un ejemplo con condicionales:
 
-Ya vimos en la descripción del lenguaje cómo podemos escribir programas en el EDSL. Veamos ahora cómo podemos efectivamente ejecutarlos.
+\begin{lstlisting}[style=finstyle, caption={Opción call condicional (opcion\_call.fin)}]
+-- Derecho a comprar acciones de AAPL al precio actual
+let compra = scale AAPL one USD;
+-- or zero: si el contrato no conviene, no se ejerce
+let call = compra or zero;
+call
+\end{lstlisting}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Manual de uso e instalación}
+% ═══════════════════════════════════════════════════════════════════════════════
 
 \subsection{Compilación}
 
@@ -305,7 +322,7 @@ Para compilar el proyecto, debemos ejecutar el comando
 stack build
 \end{lstlisting}
 
-desde el directorio raíz del proyecto. Esto descargará las dependencias necesarias (Parsec, Haskeline, etc.) y compilará el intérprete.
+desde el directorio raíz del proyecto. Esto descargará las dependencias necesarias (Parsec, Haskeline, mtl, etc.) y compilará el intérprete.
 
 \subsection{Ejecución del REPL}
 
@@ -325,7 +342,7 @@ Escriba :? para recibir ayuda.
 Fin> one USD
 Fecha        Monto          Desde -> Hacia
 -----------------------------------------
-2026-02-17  1 USD  Banco -> Bussa
+2026-02-26  1 USD  Banco -> Bussa
 
 Fin> let swap = give one USD and one EUR
 Contrato(s) asignado(s) correctamente.
@@ -333,37 +350,25 @@ Contrato(s) asignado(s) correctamente.
 Fin> scale 1000.0 swap
 Fecha        Monto          Desde -> Hacia
 -----------------------------------------
-2026-02-17  1000 USD  Bussa -> Banco
-2026-02-17  1000 EUR  Banco -> Bussa
+2026-02-26  1000 USD  Bussa -> Banco
+2026-02-26  1000 EUR  Banco -> Bussa
 
-Fin> :quote
-Cotizaciones actuales:
-  AAPL = 150.0
-  OIL = 80.5
-  USD_ARS = 1000.0
+Fin> deposit Alice 5000 USD
+Contrato(s) asignado(s) correctamente.
 
-Fin> :quote OIL 90.0
-Cotización actualizada: OIL = 90.0
-
-Fin> :partes
-Partes actuales: yo = Bussa, contraparte = Banco
-
-Fin> :partes Santiago HSBC
-Partes actualizadas: yo = Santiago, contraparte = HSBC
-
-Fin> one USD
-Fecha        Monto          Desde -> Hacia
------------------------------------------
-2026-02-17  1 USD  HSBC -> Santiago
+Fin> :wallet Alice
+  [Alice]
+  ------------------------------
+    USD   5000
 
 Fin> :load Ejemplos/basico.fin
 Archivo Ejemplos/basico.fin cargado correctamente.
 Fecha        Monto          Desde -> Hacia
 -----------------------------------------
-2026-02-17  1000 USD  HSBC -> Santiago
+2026-02-26  1000 USD  Banco -> Bussa
 
-Fin> :store
-  zcb = truncate 2027-01-01 scale 1000.0 one USD
+Fin> :reporte reporte.html
+Reporte exportado a reporte.html
 
 Fin> :quit
 Saliendo del interprete financiero.
@@ -371,30 +376,48 @@ Saliendo del interprete financiero.
 
 \subsection{Comandos disponibles}
 
+Los comandos se dividen en dos categorías: comandos del \textbf{lenguaje} (que se escriben directamente sin prefijo) y comandos del \textbf{REPL} (prefijados con \texttt{:}).
+
+\subsubsection{Comandos del lenguaje}
+
 \begin{center}
 \begin{tabular}{l l}
 \toprule
 \textbf{Comando} & \textbf{Descripción} \\
 \midrule
-\texttt{<contrato>} & Evaluar un contrato/comando y mostrar cashflows \\
+\texttt{<contrato>} & Evaluar un contrato y mostrar cashflows \\
 \texttt{let x = <contrato>} & Asignar un alias a un contrato \\
 \texttt{c1 ; c2} & Secuenciar comandos \\
+\texttt{deposit <parte> <monto> <moneda>} & Depositar fondos en una billetera \\
+\texttt{propose <nombre> <contrato>} & Proponer contrato (requiere firmas) \\
+\texttt{sign <nombre> <parte>} & Firmar un contrato pendiente \\
+\texttt{execute <nombre>} & Ejecutar contrato firmado \\
+\texttt{setfecha YYYY-MM-DD} & Cambiar fecha de evaluación \\
+\texttt{if <cond> then <c> else <c>} & Condicional sobre observables \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Comandos del REPL}
+
+\begin{center}
+\begin{tabular}{l l}
+\toprule
+\textbf{Comando} & \textbf{Descripción} \\
+\midrule
 \texttt{:ast <exp>} & Mostrar el AST de un contrato \\
 \texttt{:pp <exp>} & Pretty print de un contrato \\
 \texttt{:eval <exp>} & Evaluar un contrato directamente \\
 \texttt{:load <archivo>} & Cargar un archivo \texttt{.fin} \\
 \texttt{:store} & Mostrar contratos definidos \\
-\texttt{:quote} & Mostrar cotizaciones del oráculo \\
-\texttt{:quote <nombre> <val>} & Definir/actualizar una cotización \\
-\texttt{:partes} & Mostrar las partes actuales (yo / contraparte) \\
-\texttt{:partes <yo> <contraparte>} & Cambiar las partes del contrato \\
-\texttt{:grafico <contrato>} & Graficar flujos de caja del contrato \\
+\texttt{:quote [<nombre> <val>]} & Ver/definir cotización del oráculo \\
+\texttt{:partes [<yo> <contra>]} & Ver/cambiar las partes del contrato \\
+\texttt{:setfecha <YYYY-MM-DD>} & Cambiar fecha de evaluación desde el REPL \\
 \texttt{:wallet [<parte>]} & Ver billetera(s) \\
-\texttt{:deposit <parte> <monto> <moneda>} & Depositar fondos en una billetera \\
-\texttt{:propose <nombre> <contrato>} & Proponer contrato (requiere firmas) \\
-\texttt{:sign <nombre> <parte>} & Firmar un contrato pendiente \\
-\texttt{:execute <nombre>} & Ejecutar contrato completamente firmado \\
 \texttt{:pending} & Ver contratos pendientes de firma \\
+\texttt{:historial} & Ver historial de ejecuciones \\
+\texttt{:reporte [<archivo.html>]} & Exportar reporte HTML completo \\
+\texttt{:ast-svg <contrato>} \textbf{'>'} \texttt{<archivo>} & Exportar AST del contrato a SVG \\
 \texttt{:help} o \texttt{:?} & Mostrar ayuda \\
 \texttt{:quit} & Salir del intérprete \\
 \bottomrule
@@ -403,7 +426,7 @@ Saliendo del interprete financiero.
 
 \subsection{Archivos \texttt{.fin}}
 
-Es posible escribir programas en archivos con extensión \texttt{.fin} y cargarlos desde el REPL con \texttt{:load}. El directorio \texttt{Ejemplos/} contiene 19 archivos de ejemplo que cubren distintos escenarios financieros. La sintaxis de estos archivos sigue las siguientes convenciones:
+Es posible escribir programas en archivos con extensión \texttt{.fin} y cargarlos desde el REPL con \texttt{:load}. El directorio \texttt{Ejemplos/} contiene 15 archivos de ejemplo que cubren distintos escenarios financieros. La sintaxis de estos archivos sigue las siguientes convenciones:
 
 \begin{itemize}[nosep]
     \item Los comentarios se escriben con \texttt{-{}-} al inicio de la línea.
@@ -412,78 +435,101 @@ Es posible escribir programas en archivos con extensión \texttt{.fin} y cargarl
     \item La última expresión (la evaluación) no lleva \texttt{;} al final.
 \end{itemize}
 
-\section{Organización de los archivos.}
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Organización de los archivos}
+% ═══════════════════════════════════════════════════════════════════════════════
 
 El trabajo se encuentra dividido en los siguientes directorios principales:
 
-\textbf{src/.} Contiene el código fuente principal del lenguaje. En particular, podemos encontrar:
+\textbf{src/.} Contiene el código fuente principal del lenguaje:
 \begin{itemize}[nosep]
-    \item \textbf{AST.hs.} Define los tipos de datos algebraicos del lenguaje: \texttt{Contract}, \texttt{Comm} y \texttt{Obs}.
-    \item \textbf{Types.hs.} Define los tipos base utilizados en la evaluación: \texttt{Currency}, \texttt{Amount}, \texttt{Cashflow}, \texttt{Env} y \texttt{EvalError}.
-    \item \textbf{Monads.hs.} Define la mónada \texttt{Eval} que combina los efectos de Reader, Writer y Either.
-    \item \textbf{Utils.hs.} Funciones auxiliares monádicas: \texttt{ask}, \texttt{throw}, \texttt{localEnv}, \texttt{censor} y \texttt{cashflowRegister}.
-    \item \textbf{Parser.hs.} Implementa el parser del lenguaje utilizando Parsec, con gramática de precedencias para contratos y observables.
-    \item \textbf{Evaluator.hs.} Implementa el evaluador de contratos y comandos, incluyendo la sustitución de variables (\texttt{substContract}) con detección de ciclos.
-    \item \textbf{PrettyPrinter.hs.} Pretty printer con niveles de precedencia que minimiza el uso de paréntesis.
-    \item \textbf{Wallet.hs.} Implementa el sistema de billeteras (saldos por moneda por parte) y contratos pendientes con firmas duales.
-    \item \textbf{Graficos.hs.} Genera gráficos ASCII de los flujos de caja de un contrato: flechas entre partes, barras proporcionales y resumen neto por moneda.
+    \item \textbf{AST.hs.} Define los tipos de datos algebraicos del lenguaje: \texttt{Contract}, \texttt{Obs}, \texttt{ObsBool}, \texttt{Comm} y \texttt{PendingContract}.
+    \item \textbf{Types.hs.} Define los tipos base: \texttt{Currency}, \texttt{Amount}, \texttt{Cashflow}, \texttt{Env}, \texttt{Wallets}, \texttt{HistorialEntry}, \texttt{WalletSnapshot} y \texttt{EvalError}.
+    \item \textbf{Monads.hs.} Define la mónada \texttt{Interp} (un stack de \texttt{StateT}, \texttt{ReaderT}, \texttt{WriterT} y \texttt{Either} de \texttt{mtl}) junto con el estado mutable \texttt{InterpState} y las funciones de acceso.
+    \item \textbf{Parser.hs.} Implementa el parser del lenguaje utilizando Parsec, con gramática de precedencias para contratos, observables numéricos, observables booleanos y todos los comandos.
+    \item \textbf{Evaluator.hs.} Implementa el evaluador de contratos, observables, observables booleanos y comandos (incluyendo \texttt{deposit}, \texttt{propose}, \texttt{sign}, \texttt{execute}, \texttt{setfecha}), además de las operaciones de billetera.
+    \item \textbf{PrettyPrinter.hs.} Pretty printer con niveles de precedencia, formateo de cashflows, billeteras, historial, pendientes y errores.
+    \item \textbf{Exportar.hs.} Genera reportes HTML autocontenidos con gráficos SVG embebidos (incluyendo barras de cashflows, diagramas de árbol SVG del AST, y gráficos de evolución temporal de billeteras).
 \end{itemize}
 
-\textbf{app/.} Contiene un único archivo, \texttt{Main.hs}, donde se encuentra el REPL interactivo construido con Haskeline. En este archivo se definen los comandos del intérprete, el manejo de estado (store de contratos, mapa de cotizaciones del oráculo, entorno de evaluación), y la carga de archivos \texttt{.fin}.
+\textbf{app/.} Contiene un único archivo, \texttt{Main.hs}, donde se encuentra el REPL interactivo construido con Haskeline. En este archivo se definen los comandos del intérprete, el manejo de estado (\texttt{InterpState} + \texttt{Env}), la carga de archivos \texttt{.fin}, y la interfaz de usuario.
 
-\textbf{Ejemplos/.} Es el directorio donde se almacenan los archivos de ejemplo \texttt{.fin}.
+\textbf{Ejemplos/.} Es el directorio donde se almacenan los 15 archivos de ejemplo \texttt{.fin} que cubren escenarios como bonos, swaps, opciones, derivados, coberturas, préstamos y evolución temporal.
 
 Los demás archivos y directorios que pueden encontrarse en el directorio raíz (\texttt{stack.yaml}, \texttt{package.yaml}, \texttt{.stack-work/}, etc.) son generados y utilizados por la herramienta Stack.
 
-\section{Decisiones de diseño y observaciones.}
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Decisiones de diseño y observaciones}
+% ═══════════════════════════════════════════════════════════════════════════════
 
 \subsection{El AST}
 
-Los tipos de datos del lenguaje están definidos en \texttt{AST.hs} como tipos algebraicos de Haskell siguiendo un enfoque de \textbf{deep embedding}: los contratos se representan como un árbol de sintaxis abstracta (AST) que puede ser inspeccionado, transformado y evaluado. A diferencia de un \textit{shallow embedding}, donde cada combinador se definiría directamente como una función Haskell que computa su resultado, el deep embedding nos permite operar sobre la \textit{estructura} del contrato. Esto es lo que hace posible, por ejemplo, hacer pretty printing, sustituir variables, detectar ciclos, y potencialmente aplicar optimizaciones o transformaciones sobre contratos antes de evaluarlos.
+Los tipos de datos del lenguaje están definidos en \texttt{AST.hs} como tipos algebraicos de Haskell siguiendo un enfoque de \textbf{deep embedding}: los contratos se representan como un árbol de sintaxis abstracta (AST) que puede ser inspeccionado, transformado y evaluado. A diferencia de un \textit{shallow embedding}, donde cada combinador se definiría directamente como una función Haskell que computa su resultado, el deep embedding nos permite operar sobre la \textit{estructura} del contrato. Esto es lo que hace posible, por ejemplo, hacer pretty printing, sustituir variables, detectar ciclos, exportar diagramas SVG del AST, y potencialmente aplicar optimizaciones o transformaciones sobre contratos antes de evaluarlos.
 
-El tipo principal \texttt{Contract} representa los combinadores del paper:
+El tipo principal \texttt{Contract} representa los combinadores del paper, extendidos con condicionales:
 
 \begin{lstlisting}[caption={Tipo de datos Contract (AST.hs)}]
-data Contract =
-    Zero |
-    One Currency |
-    Give Contract |
-    And Contract Contract |
-    Or Contract Contract |
-    Truncate Date Contract |
-    Then Contract Contract |
-    Scale (Obs Double) Contract |
-    Get Contract |
-    Anytime Contract |
-    Var String
-    deriving (Show, Eq)
+data Contract
+  = Zero
+  | One Currency
+  | Give Contract
+  | And Contract Contract
+  | Or  Contract Contract
+  | Truncate Date Contract
+  | Then Contract Contract
+  | Scale (Obs Double) Contract
+  | Var String
+  | If ObsBool Contract Contract
+  deriving (Show, Eq)
 \end{lstlisting}
 
 El constructor \texttt{Var String} no forma parte del paper original, sino que fue añadido para soportar el sistema de variables (aliasing). Cuando el usuario escribe \texttt{let swap = give one USD and one EUR}, el parser genera un \texttt{Assign "swap" (And (Give (One USD)) (One EUR))}, y posteriores referencias a \texttt{swap} se parsean como \texttt{Var "swap"}.
 
-Los comandos se representan con el tipo \texttt{Comm}:
+El constructor \texttt{If ObsBool Contract Contract} permite condicionar la elección de contrato en base a comparaciones numéricas de observables. Por ejemplo, \texttt{if OIL > 100.0 then scale OIL one USD else zero} evalúa un contrato u otro según el precio del petróleo.
 
-\begin{lstlisting}[caption={Tipo de datos Comm (AST.hs)}]
-data Comm =
-    Assign String Contract
-  | Seq Comm Comm
-  | Run Contract
+Los observables booleanos se definen como un tipo separado para mantener la separación de tipos limpia:
+
+\begin{lstlisting}[caption={Tipo de datos ObsBool (AST.hs)}]
+data ObsBool
+  = Gt  (Obs Double) (Obs Double)   -- obs > obs
+  | Lt  (Obs Double) (Obs Double)   -- obs < obs
+  | Gte (Obs Double) (Obs Double)   -- obs >= obs
+  | Lte (Obs Double) (Obs Double)   -- obs <= obs
+  | Eq  (Obs Double) (Obs Double)   -- obs == obs
   deriving (Show, Eq)
 \end{lstlisting}
 
-Finalmente, los observables se representan como un tipo paramétrico:
+Los comandos se representan con el tipo \texttt{Comm}, que incluye todos los comandos del lenguaje:
+
+\begin{lstlisting}[caption={Tipo de datos Comm (AST.hs)}]
+data Comm
+  = Assign  String Contract
+  | Seq     Comm Comm
+  | Run     Contract
+  | Deposit PartyId Currency Double
+  | Propose String Contract
+  | Sign    String PartyId
+  | Execute String
+  | SetFecha Date
+  deriving (Show, Eq)
+\end{lstlisting}
+
+Finalmente, los observables numéricos se representan como un tipo paramétrico, extendidos con un constructor \texttt{Balance} para consultar saldos de billetera:
 
 \begin{lstlisting}[caption={Tipo de datos Obs (AST.hs)}]
-data Obs a =
-    Konst a |
-    Add (Obs a) (Obs a) |
-    Sub (Obs a) (Obs a) |
-    Mul (Obs a) (Obs a) |
-    Div (Obs a) (Obs a) |
-    Neg (Obs a)         |
-    External String
-    deriving (Show, Eq, Read)
+data Obs a
+  = Konst    a
+  | Add      (Obs a) (Obs a)
+  | Sub      (Obs a) (Obs a)
+  | Mul      (Obs a) (Obs a)
+  | Div      (Obs a) (Obs a)
+  | Neg      (Obs a)
+  | External String
+  | Balance  PartyId Currency
+  deriving (Show, Eq, Read)
 \end{lstlisting}
+
+El constructor \texttt{Balance PartyId Currency} permite que un contrato consulte dinámicamente el saldo de una parte en una moneda determinada. Esto habilita contratos como ``si Alice tiene más de 1000 USD, entonces pagar 500 EUR''.
 
 Hemos implementado las instancias de \texttt{Num} y \texttt{Fractional} para \texttt{Obs a}, lo cual permite escribir expresiones aritméticas directamente sobre observables utilizando la sintaxis natural de Haskell a nivel de la implementación.
 
@@ -501,7 +547,7 @@ La gramática de contratos se implementó con una jerarquía de precedencias par
 0 (más baja) & \texttt{or} & izquierda \\
 1 & \texttt{and} & izquierda \\
 2 & \texttt{then} & izquierda \\
-3 & prefijos (\texttt{give}, \texttt{scale}, \texttt{truncate}, ...) & --- \\
+3 & prefijos (\texttt{give}, \texttt{scale}, \texttt{truncate}, \texttt{if}) & --- \\
 4 (más alta) & átomos (\texttt{zero}, \texttt{one}, variables, paréntesis) & --- \\
 \bottomrule
 \end{tabular}
@@ -511,81 +557,96 @@ Esta jerarquía se implementa con funciones mutuamente recursivas utilizando \te
 
 \begin{lstlisting}[caption={Jerarquía de precedencias en el parser}]
 parserContract :: Parser Contract
-parserContract = chainl1 parserTerm (reserved "or" >> return Or)
+parserContract = chainl1 parserTerm
+                   (reserved "or" >> return Or)
 
 parserTerm :: Parser Contract
-parserTerm = chainl1 parserFactor (reserved "and" >> return And)
+parserTerm = chainl1 parserFactor
+               (reserved "and" >> return And)
 
 parserFactor :: Parser Contract
-parserFactor = chainl1 parserPrefix (reserved "then" >> return Then)
+parserFactor = chainl1 parserPrefix
+                 (reserved "then" >> return Then)
 \end{lstlisting}
 
-De manera similar, los observables tienen su propia jerarquía: suma/resta en el nivel más bajo, multiplicación/división en el nivel intermedio, y átomos (constantes, externos, paréntesis) en el nivel más alto.
+De manera similar, los observables tienen su propia jerarquía: suma/resta en el nivel más bajo, multiplicación/división en el nivel intermedio, y átomos (constantes, externos, balance, paréntesis) en el nivel más alto.
 
-\subsection{La mónada Eval}
+El parser de comandos usa \texttt{try} para intentar cada tipo de comando en orden, dándole prioridad a los que comienzan con palabras reservadas (\texttt{let}, \texttt{deposit}, \texttt{propose}, etc.) antes de intentar parsear un contrato como evaluación directa.
 
-Lo más relevante en cuanto a la evaluación recae en la mónada definida para ello, \texttt{Eval}:
+\subsection{La mónada Interp}
 
-\begin{lstlisting}[caption={Definición de la mónada Eval (Monads.hs)}]
-newtype Eval a = Eval {
-    runEval :: Env -> Either EvalError (a, [Cashflow])
-}
+La mónada de evaluación se construye como un stack de transformadores de mónadas de la librería \texttt{mtl}:
+
+\begin{lstlisting}[caption={Definición de la mónada Interp (Monads.hs)}]
+type Interp = StateT InterpState
+               (ReaderT Env
+                 (WriterT [Cashflow]
+                   (Either EvalError)))
 \end{lstlisting}
 
-Esta mónada combina tres efectos:
+Esta mónada combina cuatro efectos:
 
 \begin{itemize}
-    \item \textbf{Reader} (\texttt{Env}): acceso de solo lectura al entorno de evaluación, que contiene la fecha actual, la función oráculo, y las identidades de las partes del contrato.
+    \item \textbf{State} (\texttt{InterpState}): estado mutable que contiene el store de contratos, las billeteras, los contratos pendientes, las cotizaciones del oráculo, el historial de ejecuciones, los snapshots temporales y la fecha actual.
+    \item \textbf{Reader} (\texttt{Env}): acceso de solo lectura al entorno de evaluación, que contiene la función oráculo y las identidades de las partes del contrato.
     \item \textbf{Writer} (\texttt{[Cashflow]}): acumulación de flujos de caja generados durante la evaluación.
-    \item \textbf{Either} (\texttt{EvalError}): manejo de errores (división por cero, variables no resueltas, referencias cíclicas, etc.).
+    \item \textbf{Either} (\texttt{EvalError}): manejo de errores (división por cero, observables desconocidos, saldo insuficiente, etc.).
 \end{itemize}
 
-La instancia de \texttt{Monad} para \texttt{Eval} propaga errores y concatena cashflows:
+El estado mutable \texttt{InterpState} agrupa toda la información que evoluciona durante la sesión:
 
-\begin{lstlisting}[caption={Instancia de Monad para Eval}]
-instance Monad Eval where
-    return = pure
-    (Eval h) >>= f = Eval (\env ->
-        case h env of
-            Left err -> Left err
-            Right (a, cfs) ->
-                case runEval (f a) env of
-                    Left err' -> Left err'
-                    Right (b, cfs') -> Right (b, cfs ++ cfs'))
+\begin{lstlisting}[caption={Estado mutable del intérprete (Monads.hs)}]
+data InterpState = InterpState
+  { isContracts :: ContractStore
+  , isWallets   :: Wallets
+  , isPending   :: PendingStore
+  , isQuotes    :: Map String Double
+  , isHistorial :: [HistorialEntry]
+  , isSnapshots :: [WalletSnapshot]
+  , isFechaHoy  :: Date
+  } deriving (Show)
 \end{lstlisting}
 
-Las funciones auxiliares \texttt{ask}, \texttt{throw}, \texttt{localEnv}, \texttt{censor} y \texttt{cashflowRegister} en \texttt{Utils.hs} abstraen el acceso al entorno, el lanzamiento de errores, la modificación local del entorno, la transformación de cashflows, y el registro de un flujo de caja respectivamente. Es esta mónada junto con estas funciones lo que simplifica significativamente la escritura del evaluador y permite modificarlo fácilmente.
+Las funciones de acceso (\texttt{getContracts}, \texttt{putWallets}, \texttt{appendHistorial}, \texttt{appendSnapshot}, etc.) se definen como operaciones monádicas simples sobre este estado.
 
 \subsection{El evaluador}
 
-El evaluador se divide en tres funciones principales:
+El evaluador se divide en cuatro funciones principales:
 
-\textbf{\texttt{evalContract}.} Evalúa un contrato dentro de la mónada \texttt{Eval}, generando cashflows. Los casos más interesantes son:
+\textbf{\texttt{evalContract}.} Evalúa un contrato dentro de la mónada \texttt{Interp}, generando cashflows. Los casos más interesantes son:
 
 \begin{itemize}
     \item \texttt{Give}: utiliza \texttt{localEnv} para intercambiar \texttt{yo} y \texttt{contraparte} en el entorno, invirtiendo la dirección de los pagos.
-    \item \texttt{Or}: evalúa ambas ramas y elige la que maximiza el valor neto para la parte ``yo'' (heurística simplificada).
+    \item \texttt{Or}: evalúa ambas ramas y elige la que maximiza el valor neto para la parte ``yo'', convirtiendo montos a USD mediante el oráculo para comparar. Si una rama falla y la otra no, se elige la exitosa.
     \item \texttt{Then}: evalúa la primera rama; si no genera cashflows, pasa a la segunda (mecanismo de fallback).
-    \item \texttt{Scale}: evalúa el observable, y usa \texttt{censor} para multiplicar los montos de todos los cashflows por el factor obtenido.
-    \item \texttt{Truncate}: usa \texttt{censor} para filtrar los cashflows cuya fecha exceda el límite.
+    \item \texttt{Scale}: evalúa el observable, y usa \texttt{censorFlows} para multiplicar los montos de todos los cashflows por el factor obtenido.
+    \item \texttt{Truncate}: usa \texttt{censorFlows} para filtrar los cashflows cuya fecha exceda el límite.
+    \item \texttt{If}: evalúa el observable booleano y, según el resultado, evalúa la rama verdadera o la falsa.
 \end{itemize}
 
-\textbf{\texttt{evalObs}.} Evalúa un observable aritmético. Soporta constantes, valores externos (obtenidos mediante la función oráculo del entorno), y las cuatro operaciones aritméticas. La división por cero y el uso de observables no definidos en el oráculo se detectan y reportan como error.
+\textbf{\texttt{evalObs}.} Evalúa un observable numérico. Soporta constantes, valores externos (obtenidos mediante la función oráculo del entorno), consultas de \texttt{Balance} al estado de billeteras, y las cuatro operaciones aritméticas. La división por cero y el uso de observables no definidos en el oráculo se detectan y reportan como error.
 
-\textbf{\texttt{evalComm}.} Evalúa un comando, propagando el \texttt{ContractStore} (un \texttt{Map String Contract}). Los tres constructores se manejan así:
+\textbf{\texttt{evalBool}.} Evalúa un observable booleano comparando dos observables numéricos con los operadores \texttt{>}, \texttt{<}, \texttt{>=}, \texttt{<=} o \texttt{==}.
+
+\textbf{\texttt{evalComm}.} Evalúa un comando, actualizando el \texttt{InterpState}. Los comandos se manejan así:
 \begin{itemize}[nosep]
-    \item \texttt{Assign}: almacena el contrato en el store \textbf{sin resolver variables}; la resolución se difiere al momento de la evaluación, lo que permite detectar ciclos.
-    \item \texttt{Run}: resuelve las variables con \texttt{substContract} y evalúa el contrato, generando cashflows.
-    \item \texttt{Seq}: ejecuta secuencialmente, propagando el store actualizado.
+    \item \texttt{Assign}: almacena el contrato en el store \textbf{sin resolver variables}; la resolución se difiere al momento de la evaluación.
+    \item \texttt{Run}: resuelve las variables con \texttt{substContract} y evalúa el contrato.
+    \item \texttt{Seq}: ejecuta secuencialmente, propagando el estado actualizado.
+    \item \texttt{Deposit}: agrega fondos a la billetera de una parte y registra un snapshot temporal.
+    \item \texttt{Propose}: crea un contrato pendiente de firma entre las partes actuales.
+    \item \texttt{Sign}: registra la firma de una parte sobre un contrato pendiente.
+    \item \texttt{Execute}: si el contrato está completamente firmado, resuelve y evalúa el contrato, aplica los cashflows a las billeteras (verificando saldos), y registra la ejecución en el historial.
+    \item \texttt{SetFecha}: cambia la fecha de evaluación y registra un snapshot del estado actual de las billeteras.
 \end{itemize}
 
 \subsection{Sustitución de variables y detección de ciclos}
 
-El sistema de variables se implementa mediante la función \texttt{substContract}, que recorre recursivamente el contrato y reemplaza cada \texttt{Var name} por el contrato correspondiente del \texttt{ContractStore}. Esta resolución se realiza \textbf{antes} de la evaluación (al ejecutar un \texttt{Run} o \texttt{:eval}), lo que permite mantener la mónada \texttt{Eval} simple, sin necesidad de incorporar un efecto de estado adicional para el store.
+El sistema de variables se implementa mediante la función \texttt{substContract}, que recorre recursivamente el contrato y reemplaza cada \texttt{Var name} por el contrato correspondiente del \texttt{ContractStore}. Esta resolución se realiza \textbf{antes} de la evaluación (al ejecutar un \texttt{Run} o \texttt{Execute}), lo que permite mantener la mónada \texttt{Interp} simple.
 
-Para evitar ciclos infinitos (por ejemplo, \texttt{let x = x} o cadenas indirectas como \texttt{let a = b; let b = a}), la función mantiene un \texttt{Set String} con las variables ya visitadas durante la resolución. Si se encuentra una variable que ya fue visitada, se reporta un error de referencia cíclica:
+Para evitar ciclos infinitos (por ejemplo, \texttt{let x = x} o cadenas indirectas como \texttt{let a = b; let b = a}), la función mantiene un \texttt{Set String} con las variables ya visitadas:
 
-\begin{lstlisting}[caption={Sustitución de variables con detección de ciclos (Evaluator.hs)}]
+\begin{lstlisting}[caption={Detección de ciclos en substContract (Evaluator.hs)}]
 substContract :: ContractStore -> Contract
               -> Either EvalError Contract
 substContract store = go Set.empty
@@ -593,32 +654,126 @@ substContract store = go Set.empty
     go visited (Var name)
         | Set.member name visited =
             Left (EvalMsg $
-              "Referencia cíclica detectada en variable: "
-              ++ name)
-        | otherwise = case Map.lookup name store of
-            Just c  -> go (Set.insert name visited) c
-            Nothing -> Left (EvalMsg $
-              "Contrato no definido: " ++ name)
-    go visited (Give c)    = Give <$> go visited c
+              "Referencia ciclica: " ++ name)
+        | otherwise =
+            case Map.lookup name store of
+              Just c  ->
+                go (Set.insert name visited) c
+              Nothing ->
+                Left (EvalMsg $
+                  "Contrato no definido: " ++ name)
+    go visited (Give c)    =
+        Give <$> go visited c
     go visited (And c1 c2) =
         And <$> go visited c1 <*> go visited c2
-    -- ... (análogamente para los demás constructores)
+    -- ... (analogamente para los demas)
 \end{lstlisting}
 
 Es importante notar que el comando \texttt{Assign} almacena el contrato tal cual, sin resolver variables. Esto permite que las definiciones sean ``lazy'': un contrato puede hacer referencia a variables que aún no fueron definidas al momento de la asignación, siempre que estén definidas cuando se evalúe.
 
+\subsection{Sistema de billeteras y firmas}
+
+\subsubsection{Billeteras}
+
+Cada parte del contrato tiene una billetera representada como un \texttt{Map Currency Double}, que registra su saldo en cada moneda. El tipo global es:
+
+\begin{lstlisting}[caption={Tipo de billeteras (Types.hs)}]
+type Wallets = Map PartyId (Map Currency Double)
+\end{lstlisting}
+
+Las operaciones básicas son \texttt{walletDeposit} (agregar fondos), \texttt{walletWithdraw} (debitar con verificación de saldo) y \texttt{applyWalletCashflows} (aplicar una lista de flujos de caja a las billeteras, verificando que cada pagador tenga fondos suficientes). Si un pagador no tiene saldo suficiente, la operación falla con un mensaje de error indicando el faltante.
+
+\subsubsection{Contratos pendientes y firmas}
+
+Para ejecutar un contrato a través del sistema de billeteras, se requiere que ambas partes lo firmen explícitamente. El flujo es:
+
+\begin{enumerate}[nosep]
+    \item \texttt{propose <nombre> <contrato>}: propone un contrato entre las partes actuales. Se crea un \texttt{PendingContract} con ambas firmas en estado \texttt{Pending}.
+    \item \texttt{sign <nombre> <parte>}: la parte indicada firma el contrato. Solo las partes involucradas pueden firmar.
+    \item \texttt{execute <nombre>}: si ambas partes firmaron, el contrato se evalúa y los flujos de caja resultantes se aplican a las billeteras. Si el pagador no tiene fondos suficientes, la ejecución falla sin modificar las billeteras.
+\end{enumerate}
+
+El tipo \texttt{PendingContract} almacena el contrato, las partes, el estado de firma de cada una, y la fecha de creación:
+
+\begin{lstlisting}[caption={Contrato pendiente (AST.hs)}]
+data PendingContract = PendingContract
+  { pcName      :: String
+  , pcContract  :: Contract
+  , pcPartyA    :: PartyId
+  , pcPartyB    :: PartyId
+  , pcSignA     :: SignatureStatus
+  , pcSignB     :: SignatureStatus
+  , pcCreatedAt :: Day
+  } deriving (Show)
+\end{lstlisting}
+
+\begin{lstlisting}[style=replstyle, numbers=none, caption={Sesión con billeteras y firmas}]
+Fin> :partes Alice Bob
+Partes actualizadas: yo = Alice, contraparte = Bob
+
+Fin> deposit Alice 5000 USD; deposit Bob 3000 EUR
+
+Fin> propose miSwap
+     scale 1000.0 (give one USD and one EUR)
+
+Fin> sign miSwap Alice; sign miSwap Bob
+
+Fin> execute miSwap
+Fecha        Monto          Desde -> Hacia
+-----------------------------------------
+2026-02-26  1000 USD  Alice -> Bob
+2026-02-26  1000 EUR  Bob -> Alice
+Billeteras actualizadas:
+  [Alice]
+    USD   4000
+    EUR   1000
+  [Bob]
+    USD   1000
+    EUR   2000
+\end{lstlisting}
+
+\subsection{Evolución temporal y setfecha}
+
+El comando \texttt{setfecha} permite cambiar la fecha de evaluación durante la sesión. Esto posibilita simular escenarios temporales: depositar fondos en una fecha, ejecutar contratos en otra, y observar cómo evolucionan las billeteras.
+
+Cada vez que se ejecuta \texttt{setfecha}, \texttt{deposit} o \texttt{execute}, se registra un \texttt{WalletSnapshot} con la fecha, el estado de las billeteras y una descripción del evento:
+
+\begin{lstlisting}[caption={Snapshot temporal (Types.hs)}]
+data WalletSnapshot = WalletSnapshot
+  { snapFecha   :: Day
+  , snapWallets :: Wallets
+  , snapEvento  :: String
+  } deriving (Show, Eq, Generic)
+\end{lstlisting}
+
+Estos snapshots se utilizan al exportar el reporte HTML para generar gráficos SVG de evolución temporal: una tabla de eventos y un gráfico de líneas por moneda que muestra la evolución del saldo de cada parte a lo largo del tiempo.
+
 \subsection{Oráculo configurable}
 
-El entorno de evaluación incluye una función \texttt{getQuote :: String -> Maybe Double} que actúa como oráculo para los observables externos (por ejemplo, el precio de \texttt{OIL} o la tasa de cambio \texttt{USD\_ARS}). En lugar de utilizar una función hardcodeada, el oráculo se construye a partir de un mapa de cotizaciones (\texttt{Map String Double}) almacenado en el estado del REPL:
+El entorno de evaluación incluye una función \texttt{getQuote :: String -> Maybe Double} que actúa como oráculo para los observables externos. En lugar de utilizar una función hardcodeada, el oráculo se construye a partir de un mapa de cotizaciones (\texttt{Map String Double}) almacenado en el estado del REPL:
 
 \begin{lstlisting}[caption={Construcción del oráculo (Main.hs)}]
-makeOracle :: Map String Double -> (String -> Maybe Double)
+makeOracle :: Map String Double
+           -> (String -> Maybe Double)
 makeOracle quotes name = Map.lookup name quotes
 \end{lstlisting}
 
-Si un observable externo no se encuentra en el mapa de cotizaciones, el oráculo devuelve \texttt{Nothing}, lo cual provoca que el evaluador lance un error \texttt{UnknownObs} con el nombre del observable desconocido. De este modo, el usuario recibe un mensaje claro en lugar de un valor silencioso por defecto.
+El comando \texttt{:quote} permite consultar y modificar las cotizaciones en tiempo de ejecución. Al actualizar una cotización, se reconstruye la función oráculo y se actualiza el entorno. El REPL inicializa el oráculo con valores por defecto:
 
-El comando \texttt{:quote} permite consultar y modificar las cotizaciones en tiempo de ejecución. Al actualizar una cotización, se reconstruye la función oráculo y se actualiza el entorno, de modo que las evaluaciones posteriores reflejan el cambio inmediatamente. El REPL inicializa el oráculo con valores por defecto para \texttt{OIL} (80.5), \texttt{AAPL} (150.0) y \texttt{USD\_ARS} (1000.0).
+\begin{center}
+\begin{tabular}{l r}
+\toprule
+\textbf{Observable} & \textbf{Valor} \\
+\midrule
+\texttt{OIL} & 80.5 \\
+\texttt{AAPL} & 150.0 \\
+\texttt{USD\_ARS} & 1000.0 \\
+\texttt{EUR\_USD} & 1.08 \\
+\texttt{GBP\_USD} & 1.27 \\
+\texttt{ARS\_USD} & 0.001 \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \subsection{Pretty printer}
 
@@ -627,157 +782,100 @@ El pretty printer utiliza niveles de precedencia para minimizar el uso de parén
 \begin{center}
 \begin{tabular}{c l}
 \toprule
-\textbf{Precedencia} & \textbf{Contratos} \\
+\textbf{Prec.} & \textbf{Contratos} \\
 \midrule
 0 & \texttt{or} \\
 1 & \texttt{and} \\
 2 & \texttt{then} \\
-3 & prefijos (\texttt{give}, \texttt{get}, \texttt{scale}, \texttt{truncate}, \texttt{anytime}) \\
+3 & prefijos (\texttt{give}, \texttt{scale}, \texttt{truncate}, \texttt{if}) \\
 4 & átomos (\texttt{zero}, \texttt{one}, variables) \\
 \bottomrule
 \end{tabular}
 \hspace{1cm}
 \begin{tabular}{c l}
 \toprule
-\textbf{Precedencia} & \textbf{Observables} \\
+\textbf{Prec.} & \textbf{Observables} \\
 \midrule
 0 & \texttt{+}, \texttt{-} \\
 1 & \texttt{*}, \texttt{/} \\
-2 & átomos (constantes, externos) \\
+2 & átomos (constantes, externos, balance) \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 De esta manera, una expresión como \texttt{(one USD and give one EUR) or zero} se imprime como \texttt{one USD and give one EUR or zero}, omitiendo los paréntesis innecesarios gracias a que \texttt{and} tiene mayor precedencia que \texttt{or}.
 
-\subsection{Evaluación con fecha estática}
+\subsection{Exportación y visualización}
 
-Una de las decisiones de diseño más significativas de nuestra implementación es la utilización de una \textbf{fecha estática} para la evaluación de contratos. El entorno de evaluación obtiene la fecha real del sistema (mediante \texttt{getCurrentTime} de \texttt{Data.Time}) al iniciar el REPL, y ésta se almacena como \texttt{fechaHoy} en el entorno \texttt{Env}. Todos los contratos se evalúan con respecto a esa única fecha fija.
+El sistema ofrece múltiples opciones de exportación y visualización:
 
-Esta decisión simplifica considerablemente la implementación:
+\subsubsection{Reporte HTML}
+
+El comando \texttt{:reporte} genera un archivo HTML autocontenido (sin dependencias externas) que incluye:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Contratos definidos}: tabla con nombre y definición de cada contrato en el store.
+    \item \textbf{Billeteras}: tarjetas con el saldo de cada parte por moneda, coloreado en verde (positivo) o rojo (negativo).
+    \item \textbf{Historial de ejecuciones}: para cada ejecución, una tarjeta con los cashflows en tabla y un gráfico SVG de barras embebido inline.
+    \item \textbf{Evolución temporal}: una tabla de eventos (depósitos, setfecha, ejecuciones) y un gráfico SVG de líneas por moneda, mostrando cómo evoluciona el saldo de cada parte a lo largo del tiempo. Los gráficos se generan con ejes compartidos, leyenda apilada y soporte para datos de un solo punto.
+\end{enumerate}
+
+Todo el CSS está inline en el HTML, lo que lo hace completamente portable.
+
+\subsubsection{SVG del AST}
+
+El comando \texttt{:ast-svg} genera un diagrama SVG del árbol de sintaxis abstracta de un contrato, utilizando un algoritmo de layout que calcula posiciones centradas para cada nodo. Los nodos se colorean según el tipo de combinador (azul para \texttt{and}, rojo para \texttt{give}, verde para \texttt{one}, etc.).
+
+\subsubsection{Gráfico de barras SVG}
+
+Cada entrada del historial en el reporte HTML incluye un gráfico SVG completo con tres secciones: tabla de cashflows, gráfico de barras horizontales (desde la perspectiva de una parte) con barras verdes para ingresos y rojas para egresos, y resumen neto por moneda.
+
+\subsection{Evaluación con fecha mutable}
+
+Una decisión de diseño significativa es el uso de una \textbf{fecha mutable} mediante el comando \texttt{setfecha}. La fecha se almacena en \texttt{InterpState} (campo \texttt{isFechaHoy}) y puede cambiar durante la sesión, lo que permite simular escenarios temporales. Esta fecha se lee en \texttt{evalContract} mediante \texttt{getFechaHoy} y afecta directamente a los combinadores \texttt{truncate} (que compara contra la fecha actual) y \texttt{one} (que asigna la fecha actual a los cashflows generados).
+
+Esto permite escribir scripts como:
+
+\begin{lstlisting}[style=finstyle, caption={Simulación temporal}, numbers=none]
+setfecha 2026-01-01;
+deposit Alice 10000 USD;
+setfecha 2026-06-01;
+execute pago1;
+setfecha 2026-12-01;
+execute pago2
+\end{lstlisting}
+
+donde cada ejecución ocurre en una fecha diferente, y los gráficos de evolución muestran correctamente la progresión temporal.
+
+Sin embargo, el sistema sigue teniendo limitaciones respecto al paper original:
 
 \begin{itemize}
-    \item \textbf{Sin evolución temporal.} No es necesario implementar un mecanismo de avance del tiempo. La evaluación es una función pura del contrato y la fecha actual, sin necesidad de simular el paso de días o períodos.
-    \item \textbf{Sin procesos estocásticos.} Al no modelar la evolución temporal, tampoco necesitamos modelar cómo cambian los observables en el tiempo. El oráculo devuelve un valor fijo para cada observable, sin simulación de caminos aleatorios ni modelos de volatilidad.
-    \item \textbf{Evaluación determinista.} Dado el mismo contrato, la misma fecha y las mismas cotizaciones, el resultado es siempre idéntico. Esto facilita las pruebas y el razonamiento sobre el sistema.
-    \item \textbf{Mónada simple.} La mónada \texttt{Eval} solo necesita Reader (entorno), Writer (cashflows) y Either (errores). No hace falta incorporar estado mutable para el tiempo ni efectos probabilísticos.
+    \item \textbf{Ausencia de \texttt{when}/\texttt{until}.} No hay mecanismo para ``esperar'' a que una condición se cumpla en el futuro. El condicional \texttt{if} evalúa la condición en el instante actual.
+    \item \textbf{Semántica simplificada de \texttt{or}.} Elige por valor neto inmediato, sin considerar el valor temporal del dinero ni pagos futuros descontados.
+    \item \textbf{Observables constantes por instante.} Cada observable tiene un valor fijo en cada momento (configurable vía \texttt{:quote}), sin simulación de caminos estocásticos.
+    \item \textbf{\texttt{truncate} como horizonte.} Solo verifica si la fecha actual es anterior al límite; no programa pagos para fechas específicas.
 \end{itemize}
 
-Sin embargo, esta simplificación introduce limitaciones importantes con respecto al paper original~\cite{peytonjones2000}:
-
-\begin{itemize}
-    \item \textbf{Ausencia del combinador \texttt{when}.} En el paper, \texttt{when obs c} adquiere el contrato \texttt{c} en el primer instante futuro en que el observable \texttt{obs} se vuelve verdadero. Esto requiere poder simular la evolución del contrato a lo largo del tiempo y evaluar condiciones booleanas en cada paso. Nuestra implementación no soporta este combinador porque no existe un mecanismo para ``esperar'' a que una condición se cumpla.
-
-    \item \textbf{Ausencia del combinador \texttt{until}.} En el paper, \texttt{until obs c} mantiene el contrato \texttt{c} activo hasta que el observable \texttt{obs} se vuelva verdadero. Al no tener evolución temporal, no podemos representar contratos cuya vigencia dependa de una condición dinámica.
-
-    \item \textbf{Semántica simplificada de \texttt{or}.} En el paper, la elección entre dos contratos debe considerar el valor futuro de cada alternativa, lo cual requiere un modelo de valoración que anticipe los pagos futuros descontados. En nuestra implementación, \texttt{or} evalúa ambas ramas con la fecha actual y selecciona la de mayor valor neto inmediato, lo cual es una heurística que no captura el valor temporal del dinero.
-
-    \item \textbf{Semántica simplificada de \texttt{anytime}.} El combinador \texttt{anytime c} del paper permite al titular ejercer \texttt{c} en cualquier momento futuro que considere óptimo (modelando opciones americanas). Esto requiere un algoritmo de ejercicio óptimo (por ejemplo, programación dinámica hacia atrás). En nuestra implementación, \texttt{anytime} simplemente evalúa el contrato de forma inmediata.
-
-    \item \textbf{\texttt{truncate} como horizonte, no como programación.} El combinador \texttt{truncate d c} solo verifica si la fecha actual es anterior a \texttt{d}; no ``programa'' un pago para la fecha \texttt{d}. En un sistema con evolución temporal, \texttt{truncate} junto con \texttt{get} permitiría modelar pagos diferidos a fechas específicas.
-
-    \item \textbf{Observables constantes.} En el paper, un observable como \texttt{OIL} puede tener un valor diferente en cada instante futuro, modelado mediante un proceso estocástico. En nuestra implementación, cada observable tiene un único valor fijo (configurable vía \texttt{:quote}), lo que impide modelar la incertidumbre de mercado.
-\end{itemize}
-
-En resumen, la fecha estática nos permite ofrecer una implementación completa y funcional del núcleo composicional del paper ---la construcción, combinación y evaluación de contratos--- sacrificando la dimensión temporal que sería necesaria para una valoración financiera realista. Para extender el sistema con soporte temporal completo, sería necesario incorporar un modelo de evolución discreta del tiempo (retículos binomiales\cite{lattice} o simulaciones de Monte Carlo\cite{montecarlo}), observables dependientes del tiempo (lo que se podría modelar con \texttt{Obs :: Date -> Double} en lugar de \texttt{Obs :: Double}), y los combinadores \texttt{when} y \texttt{until} con su semántica de espera.
+Para extender el sistema con soporte temporal completo, sería necesario incorporar un modelo de evolución discreta del tiempo (retículos binomiales\cite{lattice} o simulaciones de Monte Carlo\cite{montecarlo}), observables dependientes del tiempo, y los combinadores \texttt{when} y \texttt{until} con su semántica de espera.
 
 \subsection{El REPL}
 
-El REPL (acrónimo de \textit{read-eval-print-loop}) se implementa con la librería Haskeline, que proporciona edición de línea, historial, y autocompletado. El estado del REPL incluye:
+El REPL se implementa con la librería Haskeline\cite{haskeline}, que proporciona edición de línea, historial, y autocompletado. El estado del REPL es una tupla \texttt{(InterpState, Env)}:
 
 \begin{itemize}[nosep]
-    \item \texttt{fEnv}: el entorno de evaluación (fecha, oráculo, partes).
-    \item \texttt{cStore}: el diccionario de contratos definidos (\texttt{Map String Contract}).
-    \item \texttt{qStore}: el mapa de cotizaciones del oráculo (\texttt{Map String Double}).
-    \item \texttt{wallets}: las billeteras de las partes (\texttt{Map PartyId (Map Currency Double)}).
-    \item \texttt{pStore}: los contratos pendientes de firma (\texttt{Map String PendingContract}).
-    \item \texttt{inter}: flag de modo interactivo.
+    \item \texttt{InterpState}: todo el estado mutable del lenguaje (contratos, billeteras, pendientes, cotizaciones, historial, snapshots, fecha).
+    \item \texttt{Env}: el entorno de solo lectura (función oráculo, identidades de las partes).
 \end{itemize}
 
-Las identidades de las partes (\texttt{yo} y \texttt{contraparte}) son configurables en tiempo de ejecución mediante el comando \texttt{:partes}. Este cambio solo afecta los nombres que aparecen en la columna ``Desde $\rightarrow$ Hacia'' de los cashflows, sin modificar la semántica de los contratos.
+Las identidades de las partes (\texttt{yo} y \texttt{contraparte}) son configurables en tiempo de ejecución mediante \texttt{:partes}. La fecha se actualiza tanto desde el lenguaje (\texttt{setfecha}) como desde el REPL (\texttt{:setfecha}), manteniéndose sincronizada entre \texttt{InterpState} y \texttt{Env}.
 
-El sistema de comandos distingue entre directivas (prefijadas con \texttt{:}) y expresiones directas. Las expresiones se parsean como \texttt{Comm} y se evalúan con \texttt{evalComm}, mientras que las directivas realizan acciones especiales como mostrar el AST, hacer pretty print, cargar archivos, consultar y modificar el oráculo, o cambiar las partes del contrato.
+El sistema de comandos distingue entre directivas (prefijadas con \texttt{:}) y expresiones directas. Las expresiones se parsean como \texttt{Comm} y se evalúan con \texttt{evalComm} a través de la mónada \texttt{Interp}, mientras que las directivas realizan acciones especiales como exportar reportes, mostrar el AST, o modificar el oráculo.
 
-\subsection{Sistema de billeteras y firmas}
+Todo comando del REPL puede abreviarse a su primer carácter (por ejemplo, \texttt{:q} equivale a \texttt{:quit}, \texttt{:r} a \texttt{:reporte}, etc.).
 
-Como extensión al intérprete base, se implementó un sistema de billeteras que permite simular la ejecución real de contratos con verificación de saldos y un mecanismo de firmas duales.
-
-\subsubsection{Billeteras}
-
-Cada parte del contrato tiene una billetera representada como un \texttt{Map Currency Double}, que registra su saldo en cada moneda. El tipo global es:
-
-\begin{lstlisting}[caption={Tipo de billeteras (Wallet.hs)}]
-type Wallets = Map PartyId (Map Currency Double)
-\end{lstlisting}
-
-Las operaciones básicas son \texttt{deposit} (agregar fondos), \texttt{withdraw} (debitar con verificación de saldo) y \texttt{applyCashflows} (aplicar una lista de flujos de caja a las billeteras, verificando que cada pagador tenga fondos suficientes). Si un pagador no tiene saldo suficiente, la operación falla con un mensaje de error indicando el faltante.
-
-El comando \texttt{:deposit <parte> <monto> <moneda>} permite cargar fondos manualmente, y \texttt{:wallet} muestra los saldos actuales.
-
-\subsubsection{Contratos pendientes y firmas}
-
-Para ejecutar un contrato a través del sistema de billeteras, se requiere que ambas partes lo firmen explícitamente. El flujo es:
-
-\begin{enumerate}[nosep]
-    \item \texttt{:propose <nombre> <contrato>}: propone un contrato entre las partes actuales. Se crea un \texttt{PendingContract} con ambas firmas en estado \texttt{Pending}.
-    \item \texttt{:sign <nombre> <parte>}: la parte indicada firma el contrato. Solo las partes involucradas pueden firmar.
-    \item \texttt{:execute <nombre>}: si ambas partes firmaron, el contrato se evalúa y los flujos de caja resultantes se aplican a las billeteras. Si el pagador no tiene fondos suficientes, la ejecución falla sin modificar las billeteras.
-\end{enumerate}
-
-Este mecanismo permite simular un ciclo completo de contratación: depósito de fondos, propuesta, firma bilateral y ejecución con liquidación automática.
-
-\begin{lstlisting}[style=replstyle, numbers=none, caption={Sesión de ejemplo con billeteras}]
-Fin> :partes Alice Bob
-Partes actualizadas: yo = Alice, contraparte = Bob
-
-Fin> :deposit Alice 5000 USD
-Depositados 5000 USD en billetera de Alice
-
-Fin> :deposit Bob 3000 EUR
-Depositados 3000 EUR en billetera de Bob
-
-Fin> :propose miSwap scale 1000.0 (give one USD and one EUR)
-
-Fin> :sign miSwap Alice
-Alice firm\'{o} el contrato 'miSwap'.
-
-Fin> :sign miSwap Bob
-Bob firm\'{o} el contrato 'miSwap'.
-Contrato completamente firmado.
-
-Fin> :execute miSwap
-Contrato 'miSwap' ejecutado exitosamente.
-\end{lstlisting}
-
-\subsection{Visualización de flujos de caja}
-
-El comando \texttt{:grafico <contrato>} evalúa un contrato y muestra una visualización ASCII de los flujos de caja resultantes. La salida se divide en tres secciones:
-
-\begin{enumerate}[nosep]
-    \item \textbf{Flujos de caja}: cada cashflow se muestra como una flecha entre las partes, indicando fecha, monto, moneda, origen y destino.
-    \item \textbf{Gráfico de barras}: desde la perspectiva de la parte ``yo'', se muestra una barra proporcional para cada flujo. Las barras con \texttt{\#} representan dinero entrante y las barras con \texttt{=} representan dinero saliente.
-    \item \textbf{Neto por moneda}: resumen del saldo neto en cada moneda involucrada.
-\end{enumerate}
-
-Esta herramienta permite visualizar rápidamente la estructura de un contrato complejo y entender cómo se distribuyen los pagos entre las partes.
-
-\begin{lstlisting}[style=replstyle, numbers=none, caption={Ejemplo de :grafico con un swap}]
-Fin> :grafico scale 1000.0 (give one USD and one EUR)
-
-Flujos de caja:
-  2026-02-23  Bussa  --[ 1000 USD ]--> Banco
-  2026-02-23  Banco  --[ 1000 EUR ]--> Bussa
-
-Grafico (perspectiva de Bussa):
-  -1000 USD   ========================================
-  +1000 EUR   ########################################
-
-Neto por moneda:
-  USD   -1000
-  EUR   +1000
-\end{lstlisting}
-
-\section{Bibliografía.}
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Bibliografía}
+% ═══════════════════════════════════════════════════════════════════════════════
 
 \begin{thebibliography}{9}
 
@@ -802,6 +900,10 @@ Hackage. Documentación de Data.Map (containers).
 \bibitem{time}
 Hackage. Documentación de Data.Time.
 \\\url{https://hackage.haskell.org/package/time}
+
+\bibitem{mtl}
+Hackage. Documentación de mtl (Monad Transformer Library).
+\\\url{https://hackage.haskell.org/package/mtl}
 
 \bibitem{lattice}
 J. Cox, S. Ross, M. Rubinstein.

@@ -13,19 +13,19 @@ import Text.Parsec.Char (digit, char)
 import Types
 import AST
 
--- Lexer
+-- ─── Lexer ────────────────────────────────────────────────────────────────────
 
 lexer :: T.TokenParser ()
 lexer = T.makeTokenParser emptyDef
   { T.reservedNames   = [ "zero", "one", "give", "and", "or"
-                        , "truncate", "then", "scale", "get", "anytime"
+                        , "truncate", "then", "scale"
                         , "let"
-                          -- comandos billetera
                         , "deposit", "propose", "sign", "execute"
-                          -- observable
                         , "balance"
+                        , "if", "else"   -- condicionales
+                        , "setfecha"      -- cambio de fecha
                         ]
-  , T.reservedOpNames = ["+", "-", "*", "/", "=", ";"]
+  , T.reservedOpNames = ["+", "-", "*", "/", "=", ";", ">", "<", ">=", "<=", "=="]
   , T.caseSensitive   = False
   }
 
@@ -38,8 +38,8 @@ reservedOp = T.reservedOp lexer
 whiteSpace = T.whiteSpace lexer
 semi       = T.semi       lexer
 
--- Comandos
--- Punto de entrada: uno o más comandos separados por ';'.
+-- ─── Comandos ─────────────────────────────────────────────────────────────────
+
 parserComm :: Parser Comm
 parserComm = chainl1 parserSingleComm (semi >> return Seq)
 
@@ -50,6 +50,7 @@ parserSingleComm =
   <|> try parserPropose
   <|> try parserSign
   <|> try parserExecute
+  <|> try parserSetFecha
   <|> parserEvalComm
 
 parserAssign :: Parser Comm
@@ -60,7 +61,6 @@ parserAssign = do
   c <- parserContract
   return (Assign name c)
 
--- deposit <parte> <monto> <moneda>
 parserDeposit :: Parser Comm
 parserDeposit = do
   reserved "deposit"
@@ -69,7 +69,6 @@ parserDeposit = do
   cur   <- parserCurrency
   return (Deposit party cur amt)
 
--- propose <nombre> <contrato>
 parserPropose :: Parser Comm
 parserPropose = do
   reserved "propose"
@@ -77,7 +76,6 @@ parserPropose = do
   c    <- parserContract
   return (Propose name c)
 
--- sign <nombre> <parte>
 parserSign :: Parser Comm
 parserSign = do
   reserved "sign"
@@ -85,17 +83,23 @@ parserSign = do
   party <- identifier
   return (Sign name party)
 
--- execute <nombre>
 parserExecute :: Parser Comm
 parserExecute = do
   reserved "execute"
   name <- identifier
   return (Execute name)
 
+-- setfecha YYYY-MM-DD
+parserSetFecha :: Parser Comm
+parserSetFecha = do
+  reserved "setfecha"
+  d <- parserTime
+  return (SetFecha d)
+
 parserEvalComm :: Parser Comm
 parserEvalComm = Run <$> parserContract
 
--- Contratos
+-- ─── Contratos ────────────────────────────────────────────────────────────────
 
 parserContract :: Parser Contract
 parserContract = chainl1 parserTerm (reserved "or" >> return Or)
@@ -109,15 +113,13 @@ parserFactor = chainl1 parserPrefix (reserved "then" >> return Then)
 parserPrefix :: Parser Contract
 parserPrefix =
       parserGive
-  <|> parserGet
-  <|> parserAnytime
   <|> parserScale
   <|> parserTruncate
+  <|> try parserIf      -- try porque empieza con keyword "if"
   <|> parserAtom
 
-parserGive     = reserved "give"     >> (Give    <$> parserPrefix)
-parserGet      = reserved "get"      >> (Get     <$> parserPrefix)
-parserAnytime  = reserved "anytime"  >> (Anytime <$> parserPrefix)
+parserGive :: Parser Contract
+parserGive = reserved "give" >> (Give <$> parserPrefix)
 
 parserScale :: Parser Contract
 parserScale = do
@@ -132,6 +134,17 @@ parserTruncate = do
   t <- parserTime
   c <- parserPrefix
   return (Truncate t c)
+
+-- | if <cond> then <contrato> else <contrato>
+parserIf :: Parser Contract
+parserIf = do
+  reserved "if"
+  cond <- parserObsBool
+  reserved "then"
+  c1 <- parserPrefix
+  reserved "else"
+  c2 <- parserPrefix
+  return (If cond c1 c2)
 
 parserAtom :: Parser Contract
 parserAtom = parens parserContract <|> pZero <|> parserOne <|> parserVar
@@ -150,6 +163,25 @@ parserOne = do
     Just (cur :: Currency) -> return (One cur)
     Nothing -> fail ("'" ++ c ++ "' no es una moneda válida (USD, EUR, ARS, GBP).")
 
+-- ─── Observables booleanos ────────────────────────────────────────────────────
+-- Gramática: <obs> <op> <obs>
+-- donde <op> es >, <, >=, <=, ==
+
+parserObsBool :: Parser ObsBool
+parserObsBool = do
+  left <- parserObservable
+  op   <- parserBoolOp
+  right <- parserObservable
+  return (op left right)
+
+parserBoolOp :: Parser (Obs Double -> Obs Double -> ObsBool)
+parserBoolOp =
+      (try (reservedOp ">=") >> return Gte)
+  <|> (try (reservedOp "<=") >> return Lte)
+  <|> (try (reservedOp "==") >> return Eq)
+  <|> (reservedOp ">"        >> return Gt)
+  <|> (reservedOp "<"        >> return Lt)
+
 -- ─── Fechas ───────────────────────────────────────────────────────────────────
 
 parserTime :: Parser Date
@@ -162,7 +194,7 @@ parserTime = do
   whiteSpace
   return (fromGregorian (read y) (read m) (read d))
 
--- ─── Observables ─────────────────────────────────────────────────────────────
+-- ─── Observables numéricos ────────────────────────────────────────────────────
 
 parserObservable :: Parser (Obs Double)
 parserObservable = chainl1 parserMultDiv op
@@ -181,22 +213,18 @@ parserObsAtom =
       parens parserObservable
   <|> try parserNeg
   <|> try parserKonst
-  <|> try parserBalance   -- antes de parserExternal para evitar consumir "balance"
+  <|> try parserBalance
   <|> parserExternal
 
--- Observable: -<obs>
 parserNeg :: Parser (Obs Double)
 parserNeg = do
   reservedOp "-"
   o <- parserObsAtom
   return (Neg o)
 
--- Observable: número literal
 parserKonst :: Parser (Obs Double)
 parserKonst = Konst <$> parserNumber
 
--- Observable: balance <parte> <moneda>
--- Permite cosas como:  scale (balance Alice USD) one USD
 parserBalance :: Parser (Obs Double)
 parserBalance = do
   reserved "balance"
@@ -204,17 +232,14 @@ parserBalance = do
   cur   <- parserCurrency
   return (Balance party cur)
 
--- Observable: nombre externo (cotización del oráculo)
 parserExternal :: Parser (Obs Double)
 parserExternal = External <$> identifier
 
--- Parsers auxiliares
+-- ─── Auxiliares ───────────────────────────────────────────────────────────────
 
--- Parsea un número como Double (entero o flotante).
 parserNumber :: Parser Double
 parserNumber = try float <|> (fromIntegral <$> integer)
 
--- Parsea un identificador de moneda (USD, EUR, ARS, GBP).
 parserCurrency :: Parser Currency
 parserCurrency = do
   s <- identifier
