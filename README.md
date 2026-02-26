@@ -5,7 +5,7 @@ Implementación de un lenguaje de dominio específico embebido (EDSL) para la co
 Trabajo Práctico Final — Análisis de Lenguajes de Programación (ALP), LCC, UNR.
 
 **Autor:** Santiago Bussanich  
-**Tutor:** Mauro Jaskelioff
+**Tutor:** Cecilia Manzino
 
 ---
 
