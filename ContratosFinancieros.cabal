@@ -30,6 +30,7 @@ library
       Monads
       Types
       Exportar
+      ExportarAST
   other-modules:
       Paths_ContratosFinancieros
   hs-source-dirs:

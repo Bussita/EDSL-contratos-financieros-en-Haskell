@@ -21,6 +21,7 @@ import PrettyPrinter
 import Evaluator
 import Monads
 import Exportar
+import ExportarAST
 
 -- ─── Punto de entrada ─────────────────────────────────────────────────────────
 
@@ -44,8 +45,8 @@ main' = do
   let defaultEnv = Env
         { fechaHoy    = today
         , getQuote    = makeOracle defaultQuotes
-        , yo          = "Bussa"
-        , contraparte = "Banco"
+        , yo          = "Alice"
+        , contraparte = "Bob"
         }
 
   let initialState = (emptyInterpState today) { isQuotes = defaultQuotes }
@@ -118,12 +119,17 @@ interpretCommand x = lift $
     then do
       let (cmd, t') = break isSpace x
           t         = dropWhile isSpace t'
-          matching  = filter (\(Cmd cs _ _ _) -> any (isPrefixOf cmd) cs) commands
-      case matching of
-        []              -> putStrLn ("Comando desconocido `" ++ cmd ++ "'. Escriba :? para recibir ayuda.")
-                           >> return Noop
-        [Cmd _ _ f _]  -> return (f t)
-        _               -> putStrLn "Comando ambigüo." >> return Noop
+          -- Primero buscar match exacto contra algún alias
+          exact    = filter (\(Cmd cs _ _ _) -> any (== cmd) cs) commands
+          -- Si no hay exacto, buscar por prefijo
+          prefixed = filter (\(Cmd cs _ _ _) -> any (isPrefixOf cmd) cs) commands
+      case exact of
+        [Cmd _ _ f _] -> return (f t)
+        _ -> case prefixed of
+          []             -> putStrLn ("Comando desconocido `" ++ cmd ++ "'. Escriba :? para recibir ayuda.")
+                            >> return Noop
+          [Cmd _ _ f _] -> return (f t)
+          _              -> putStrLn "Comando ambigüo." >> return Noop
     else return (EvalComm x)
 
 -- ─── Manejo de comandos ───────────────────────────────────────────────────────
@@ -342,27 +348,26 @@ data InteractiveCommand = Cmd [String] String (String -> Command) String
 
 commands :: [InteractiveCommand]
 commands =
-  [ Cmd [":ast"]     "<exp>"                   PrintAST          "Muestra el AST de un contrato"
-  , Cmd [":pp"]      "<exp>"                   PrintPP           "Pretty print de un contrato/comando"
-  , Cmd [":eval"]    "<exp>"                   EvalContract      "Evalúa un contrato y muestra flujos de caja"
-  , Cmd [":load"]    "<archivo>"               LoadFile          "Cargar un archivo .fin"
-  , Cmd [":store"]   ""                        (const ShowStore) "Mostrar contratos definidos"
-  , Cmd [":quote"]   "[<nombre> <val>]"        SetQuote          "Ver/definir cotización (ej: :quote OIL 85.0)"
-  , Cmd [":partes"]  "[<yo> <contra>]"         SetPartes         "Ver/cambiar partes (ej: :partes Santiago HSBC)"
-  , Cmd [":wallet"]  "[<parte>]"               ShowWallet        "Ver billetera(s)"
-  , Cmd [":pending"]    ""                      (const ShowPending)   "Ver contratos pendientes"
-  , Cmd [":setfecha"]   "<YYYY-MM-DD>"           ReplSetFecha          "Cambiar fecha de evaluación"
-  , Cmd [":historial"]  ""                      (const ShowHistorial) "Ver historial de ejecuciones"
-  , Cmd [":reporte"]    "[<archivo.html>]"       ExportHTML           "Exportar reporte HTML completo"
-  , Cmd [":ast-svg"]    "<contrato> > <archivo>" ExportASTSVG         "Exportar AST del contrato a SVG"
-  , Cmd [":quit"]       ""                       (const Quit)         "Salir del intérprete"
-  , Cmd [":help",":?"] ""                      (const Help)      "Mostrar esta lista de comandos"
+  [ Cmd [":ast",":a"]          "<exp>"                   PrintAST              "Muestra el AST de un contrato"
+  , Cmd [":pp"]                "<exp>"                   PrintPP               "Pretty print de un contrato/comando"
+  , Cmd [":eval",":e"]        "<exp>"                   EvalContract          "Evalúa un contrato y muestra flujos de caja"
+  , Cmd [":load",":l"]        "<archivo>"               LoadFile              "Cargar un archivo .fin"
+  , Cmd [":store",":s"]       ""                        (const ShowStore)     "Mostrar contratos definidos"
+  , Cmd [":quote",":qt"]      "[<nombre> <val>]"        SetQuote              "Ver/definir cotización (ej: :quote OIL 85.0)"
+  , Cmd [":partes",":p"]      "[<yo> <contra>]"         SetPartes             "Ver/cambiar partes (ej: :partes Santiago HSBC)"
+  , Cmd [":wallet",":w"]      "[<parte>]"               ShowWallet            "Ver billetera(s)"
+  , Cmd [":pending",":pd"]    ""                        (const ShowPending)   "Ver contratos pendientes"
+  , Cmd [":setfecha",":sf"]   "<YYYY-MM-DD>"            ReplSetFecha          "Cambiar fecha de evaluación"
+  , Cmd [":historial",":hi"]  ""                        (const ShowHistorial) "Ver historial de ejecuciones"
+  , Cmd [":reporte",":r"]     "[<archivo.html>]"        ExportHTML            "Exportar reporte HTML completo"
+  , Cmd [":ast-svg",":svg"]   "<contrato> > <archivo>"  ExportASTSVG          "Exportar AST del contrato a SVG"
+  , Cmd [":quit",":q"]        ""                        (const Quit)          "Salir del intérprete"
+  , Cmd [":help",":?",":h"]   ""                        (const Help)          "Mostrar esta lista de comandos"
   ]
 
 helpTxt :: [InteractiveCommand] -> String
 helpTxt cs =
-  "Lista de comandos:  Cualquier comando puede abreviarse a :c donde\n"
-  ++ "c es el primer caracter del nombre completo.\n\n"
+  "Lista de comandos:  Los comandos pueden abreviarse con su alias corto.\n\n"
   ++ "Comandos del lenguaje (sin :):\n"
   ++ "  let <x> = <contrato>         definir contrato\n"
   ++ "  <contrato>                   evaluar contrato\n"

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang='es'><head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>Reporte EDSL Financiero</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8;
+         color: #212121; line-height: 1.5; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+  h1 { font-size: 1.8rem; color: #1565C0; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.2rem; color: #424242; border-bottom: 2px solid #1565C0;
+       padding-bottom: 0.3rem; margin-bottom: 1rem; }
+  h3 { font-size: 1rem; color: #1565C0; margin-bottom: 0.5rem; }
+  .subtitulo { color: #757575; font-size: 0.9rem; margin-bottom: 2rem; }
+  section { background: white; border-radius: 8px; padding: 1.5rem;
+            margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th { background: #E3F2FD; color: #1565C0; padding: 0.5rem 0.75rem;
+       text-align: left; font-weight: 600; }
+  td { padding: 0.4rem 0.75rem; border-bottom: 1px solid #F0F0F0; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #FAFAFA; }
+  code { font-family: 'Courier New', monospace; font-size: 0.85rem;
+         background: #F5F5F5; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  .pos { color: #2E7D32; font-weight: 600; }
+  .neg { color: #C62828; font-weight: 600; }
+  .empty { color: #9E9E9E; font-style: italic; padding: 0.5rem 0; }
+  .wallet-card { display: inline-block; vertical-align: top;
+                 margin: 0 1rem 1rem 0; min-width: 180px; }
+  .entry-card { border: 1px solid #E0E0E0; border-radius: 6px;
+                padding: 1rem; margin-bottom: 1rem; }
+  .entry-header { display: flex; gap: 1rem; align-items: center;
+                  margin-bottom: 0.75rem; flex-wrap: wrap; }
+  .entry-name { font-weight: 700; font-size: 1rem; color: #1565C0; }
+  .entry-date { color: #757575; font-size: 0.85rem; }
+  .entry-parties { color: #424242; font-size: 0.85rem;
+                   background: #E3F2FD; padding: 0.1rem 0.5rem;
+                   border-radius: 12px; }
+  .svg-container { margin-top: 1rem; overflow-x: auto; }
+</style></head>
+
+<body>
+<div class='container'>
+<h1>Reporte de Sesión EDSL Financiero</h1>
+<p class='subtitulo'>Fecha: 2026-02-26  |  Partes: Empresa / Mercado</p>
+<section><h2>Contratos Definidos</h2><table><thead><tr><th>Nombre</th><th>Definición</th></tr></thead><tbody><tr><td><code>alquiler</code></td><td><code>give scale 50000.0 one ARS</code></td></tr><tr><td><code>exportaciones</code></td><td><code>scale 3000.0 one EUR</code></td></tr><tr><td><code>importaciones</code></td><td><code>give scale 1000.0 one USD</code></td></tr><tr><td><code>impuestos</code></td><td><code>give truncate 2026-04-30 scale 100000.0 one ARS</code></td></tr><tr><td><code>resultado</code></td><td><code>((((ventas_locales and exportaciones) and salarios) and alquiler) and importaciones) and impuestos</code></td></tr><tr><td><code>salarios</code></td><td><code>give scale 200000.0 one ARS</code></td></tr><tr><td><code>ventas_locales</code></td><td><code>scale 500000.0 one ARS</code></td></tr></tbody></table></section>
+<section><h2>Billeteras</h2><p class='empty'>Sin billeteras registradas</p></section>
+<section><h2>Historial de Ejecuciones</h2><p class='empty'>Sin ejecuciones registradas</p></section>
+<section><h2>Evolución Temporal</h2><p class='empty'>Sin snapshots registrados</p></section>
+</div></body></html>

@@ -235,7 +235,7 @@ parserBalance = do
 parserExternal :: Parser (Obs Double)
 parserExternal = External <$> identifier
 
--- ─── Auxiliares ───────────────────────────────────────────────────────────────
+-- Parsers Auxiliares
 
 parserNumber :: Parser Double
 parserNumber = try float <|> (fromIntegral <$> integer)

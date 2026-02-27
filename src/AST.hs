@@ -19,7 +19,7 @@ data Contract
   | If ObsBool Contract Contract
   deriving (Show, Eq)
 
--- ─── Observables booleanos ────────────────────────────────────────────────────
+-- Observables booleanos
 -- Tipo separado de Obs Double para mantener el sistema de tipos limpio.
 -- Las condiciones solo soportan comparaciones numéricas por ahora.
 
@@ -31,7 +31,7 @@ data ObsBool
   | Eq  (Obs Double) (Obs Double)   -- obs == obs
   deriving (Show, Eq)
 
--- ─── Comandos ─────────────────────────────────────────────────────────────────
+-- Comandos
 
 data Comm
   = Assign  String Contract          -- let x = <contrato>
@@ -44,7 +44,7 @@ data Comm
   | SetFecha Date                    -- setfecha YYYY-MM-DD
   deriving (Show, Eq)
 
--- ─── Observables numéricos ────────────────────────────────────────────────────
+-- Observables numéricos
 
 data Obs a
   = Konst    a

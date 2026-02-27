@@ -87,7 +87,15 @@
     
     {\Large \textbf{Universidad Nacional de Rosario}}\\[0.3cm]
     {\large Facultad de Ciencias Exactas, Ingeniería y Agrimensura}\\[2cm]
-    
+    \begin{figure}[h]
+
+    \centering
+
+    % Asegúrate de tener el archivo Logo-Unr-1.png en la misma carpeta
+
+    \includegraphics[width=0.4\linewidth]{Logo-Unr-1.png} 
+
+    \end{figure}
     {\large \textbf{Análisis de Lenguajes de Programación}}\\[0.2cm]
     {\large R-322}\\[2cm]
     
@@ -342,7 +350,7 @@ Escriba :? para recibir ayuda.
 Fin> one USD
 Fecha        Monto          Desde -> Hacia
 -----------------------------------------
-2026-02-26  1 USD  Banco -> Bussa
+2026-02-26  1 USD  Bob -> Alice
 
 Fin> let swap = give one USD and one EUR
 Contrato(s) asignado(s) correctamente.
@@ -350,27 +358,27 @@ Contrato(s) asignado(s) correctamente.
 Fin> scale 1000.0 swap
 Fecha        Monto          Desde -> Hacia
 -----------------------------------------
-2026-02-26  1000 USD  Bussa -> Banco
-2026-02-26  1000 EUR  Banco -> Bussa
+2026-02-26  1000 USD  Alice -> Bob
+2026-02-26  1000 EUR  Bob -> Alice
 
 Fin> deposit Alice 5000 USD
 Contrato(s) asignado(s) correctamente.
 
-Fin> :wallet Alice
+Fin> :w Alice
   [Alice]
   ------------------------------
     USD   5000
 
-Fin> :load Ejemplos/basico.fin
+Fin> :l Ejemplos/basico.fin
 Archivo Ejemplos/basico.fin cargado correctamente.
 Fecha        Monto          Desde -> Hacia
 -----------------------------------------
-2026-02-26  1000 USD  Banco -> Bussa
+2026-02-26  1000 USD  Bob -> Alice
 
-Fin> :reporte reporte.html
+Fin> :r reporte.html
 Reporte exportado a reporte.html
 
-Fin> :quit
+Fin> :q
 Saliendo del interprete financiero.
 \end{lstlisting}
 
@@ -400,26 +408,28 @@ Los comandos se dividen en dos categorías: comandos del \textbf{lenguaje} (que 
 
 \subsubsection{Comandos del REPL}
 
+Cada comando del REPL tiene un alias corto que permite invocarlo más rápidamente. La resolución de comandos prioriza coincidencias exactas contra los alias antes de buscar por prefijo, lo que evita ambigüedades.
+
 \begin{center}
-\begin{tabular}{l l}
+\begin{tabular}{l l l}
 \toprule
-\textbf{Comando} & \textbf{Descripción} \\
+\textbf{Comando} & \textbf{Alias} & \textbf{Descripción} \\
 \midrule
-\texttt{:ast <exp>} & Mostrar el AST de un contrato \\
-\texttt{:pp <exp>} & Pretty print de un contrato \\
-\texttt{:eval <exp>} & Evaluar un contrato directamente \\
-\texttt{:load <archivo>} & Cargar un archivo \texttt{.fin} \\
-\texttt{:store} & Mostrar contratos definidos \\
-\texttt{:quote [<nombre> <val>]} & Ver/definir cotización del oráculo \\
-\texttt{:partes [<yo> <contra>]} & Ver/cambiar las partes del contrato \\
-\texttt{:setfecha <YYYY-MM-DD>} & Cambiar fecha de evaluación desde el REPL \\
-\texttt{:wallet [<parte>]} & Ver billetera(s) \\
-\texttt{:pending} & Ver contratos pendientes de firma \\
-\texttt{:historial} & Ver historial de ejecuciones \\
-\texttt{:reporte [<archivo.html>]} & Exportar reporte HTML completo \\
-\texttt{:ast-svg <contrato>} \textbf{'>'} \texttt{<archivo>} & Exportar AST del contrato a SVG \\
-\texttt{:help} o \texttt{:?} & Mostrar ayuda \\
-\texttt{:quit} & Salir del intérprete \\
+\texttt{:ast <exp>} & \texttt{:a} & Mostrar el AST de un contrato \\
+\texttt{:pp <exp>} & & Pretty print de un contrato \\
+\texttt{:eval <exp>} & \texttt{:e} & Evaluar un contrato directamente \\
+\texttt{:load <archivo>} & \texttt{:l} & Cargar un archivo \texttt{.fin} \\
+\texttt{:store} & \texttt{:s} & Mostrar contratos definidos \\
+\texttt{:quote [<nombre> <val>]} & \texttt{:qt} & Ver/definir cotización del oráculo \\
+\texttt{:partes [<yo> <contra>]} & \texttt{:p} & Ver/cambiar las partes del contrato \\
+\texttt{:wallet [<parte>]} & \texttt{:w} & Ver billetera(s) \\
+\texttt{:pending} & \texttt{:pd} & Ver contratos pendientes de firma \\
+\texttt{:setfecha <YYYY-MM-DD>} & \texttt{:sf} & Cambiar fecha de evaluación \\
+\texttt{:historial} & \texttt{:hi} & Ver historial de ejecuciones \\
+\texttt{:reporte [<archivo.html>]} & \texttt{:r} & Exportar reporte HTML completo \\
+\texttt{:ast-svg <contrato> > <archivo>} & \texttt{:svg} & Exportar AST del contrato a SVG \\
+\texttt{:quit} & \texttt{:q} & Salir del intérprete \\
+\texttt{:help} o \texttt{:?} & \texttt{:h} & Mostrar ayuda \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -449,12 +459,15 @@ El trabajo se encuentra dividido en los siguientes directorios principales:
     \item \textbf{Parser.hs.} Implementa el parser del lenguaje utilizando Parsec, con gramática de precedencias para contratos, observables numéricos, observables booleanos y todos los comandos.
     \item \textbf{Evaluator.hs.} Implementa el evaluador de contratos, observables, observables booleanos y comandos (incluyendo \texttt{deposit}, \texttt{propose}, \texttt{sign}, \texttt{execute}, \texttt{setfecha}), además de las operaciones de billetera.
     \item \textbf{PrettyPrinter.hs.} Pretty printer con niveles de precedencia, formateo de cashflows, billeteras, historial, pendientes y errores.
-    \item \textbf{Exportar.hs.} Genera reportes HTML autocontenidos con gráficos SVG embebidos (incluyendo barras de cashflows, diagramas de árbol SVG del AST, y gráficos de evolución temporal de billeteras).
+    \item \textbf{Exportar.hs.} Genera reportes HTML autocontenidos con gráficos SVG embebidos (incluyendo barras de cashflows y gráficos de evolución temporal de billeteras).
+    \item \textbf{ExportarAST.hs.} Genera diagramas de árbol SVG del AST de contratos, incluyendo el layout jerárquico con posicionamiento automático de nodos y coloreado por tipo de combinador.
 \end{itemize}
 
 \textbf{app/.} Contiene un único archivo, \texttt{Main.hs}, donde se encuentra el REPL interactivo construido con Haskeline. En este archivo se definen los comandos del intérprete, el manejo de estado (\texttt{InterpState} + \texttt{Env}), la carga de archivos \texttt{.fin}, y la interfaz de usuario.
 
 \textbf{Ejemplos/.} Es el directorio donde se almacenan los 15 archivos de ejemplo \texttt{.fin} que cubren escenarios como bonos, swaps, opciones, derivados, coberturas, préstamos y evolución temporal.
+
+\textbf{Exports/.} Contiene ejemplos pre-generados de las salidas del sistema: reportes HTML completos (\texttt{reporte\_completo.html}, \texttt{reporte\_empresa.html}, \texttt{reporte\_temporal.html}) y diagramas SVG de árboles AST (\texttt{ast\_bono.svg}, \texttt{ast\_collar.svg}, \texttt{ast\_opcion.svg}, etc.). Estos archivos permiten visualizar las capacidades del sistema sin necesidad de compilarlo.
 
 Los demás archivos y directorios que pueden encontrarse en el directorio raíz (\texttt{stack.yaml}, \texttt{package.yaml}, \texttt{.stack-work/}, etc.) son generados y utilizados por la herramienta Stack.
 
@@ -824,11 +837,45 @@ Todo el CSS está inline en el HTML, lo que lo hace completamente portable.
 
 \subsubsection{SVG del AST}
 
-El comando \texttt{:ast-svg} genera un diagrama SVG del árbol de sintaxis abstracta de un contrato, utilizando un algoritmo de layout que calcula posiciones centradas para cada nodo. Los nodos se colorean según el tipo de combinador (azul para \texttt{and}, rojo para \texttt{give}, verde para \texttt{one}, etc.).
+El comando \texttt{:ast-svg} genera un diagrama SVG\cite{svg} del árbol de sintaxis abstracta de un contrato. La generación se realiza en tres fases:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Conversión a árbol de layout.} El tipo \texttt{Contract} se convierte a un árbol intermedio \texttt{ASTTree}, donde cada nodo almacena una etiqueta de texto y una lista de hijos. Los nodos hoja (\texttt{zero}, \texttt{one}, \texttt{Var}) no tienen hijos; los unarios (\texttt{give}, \texttt{scale}, \texttt{truncate}) tienen un hijo; y los binarios (\texttt{and}, \texttt{or}, \texttt{then}, \texttt{if}) tienen dos.
+    \item \textbf{Cálculo de posiciones.} Se calcula recursivamente el ancho de cada subárbol como el máximo entre el ancho de un nodo individual (100px) y la suma de los anchos de sus hijos más los gaps de separación (20px). Luego, la función \texttt{layoutTree} asigna coordenadas $(x, y)$ a cada nodo: el padre se centra horizontalmente sobre el espacio ocupado por sus hijos, y los hijos se distribuyen uniformemente debajo usando \texttt{scanl} para calcular posiciones incrementales.
+    \item \textbf{Renderizado.} Cada nodo se dibuja como un rectángulo redondeado (\texttt{<rect rx='6'>}) con texto centrado, y las conexiones padre-hijo como líneas (\texttt{<line>}). Las aristas se renderizan primero para que queden debajo de los nodos visualmente.
+\end{enumerate}
+
+Cada tipo de combinador tiene un color distintivo: azul (\texttt{and}), rojo (\texttt{give}), verde (\texttt{one}), naranja (\texttt{then}), púrpura (\texttt{or}), cyan (\texttt{scale}), verde oscuro (\texttt{truncate}), magenta (\texttt{if}) y gris (\texttt{zero}). Para nodos con información adicional (como el observable en \texttt{scale} o la fecha en \texttt{truncate}), la etiqueta se divide en dos líneas de texto SVG con fuentes de diferente tamaño.
+
+El tamaño total del SVG se calcula dinámicamente a partir del ancho del árbol y su profundidad, garantizando que el diagrama se ajuste exactamente al contenido sin espacio desperdiciado.
 
 \subsubsection{Gráfico de barras SVG}
 
-Cada entrada del historial en el reporte HTML incluye un gráfico SVG completo con tres secciones: tabla de cashflows, gráfico de barras horizontales (desde la perspectiva de una parte) con barras verdes para ingresos y rojas para egresos, y resumen neto por moneda.
+Cada entrada del historial en el reporte HTML incluye un gráfico SVG\cite{svg} completo embebido inline, compuesto por tres secciones apiladas verticalmente:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Tabla de cashflows.} Una tabla renderizada con primitivas SVG (\texttt{<text>} y \texttt{<rect>}) que muestra fecha, monto, origen y destino de cada flujo. Las filas alternan color de fondo para facilitar la lectura, y cada moneda se colorea con un color distintivo (azul para USD, naranja para EUR, púrpura para ARS, teal para GBP).
+    \item \textbf{Barras horizontales.} Un gráfico de barras desde la perspectiva de una parte, donde el eje central (x=230) separa ingresos a la derecha (barras verdes) de egresos a la izquierda (barras rojas). El ancho de cada barra se normaliza linealmente respecto al valor absoluto máximo, lo que permite comparar visualmente magnitudes relativas.
+    \item \textbf{Resumen neto por moneda.} Barras horizontales que muestran el saldo neto en cada moneda, con etiquetas que indican el signo y valor exacto. Utiliza colores por moneda en vez del esquema ingreso/egreso.
+\end{enumerate}
+
+La altura total del SVG se calcula dinámicamente como la suma de las tres secciones más márgenes, adaptándose al número de cashflows.
+
+\subsubsection{Gráfico de evolución temporal}
+
+Cuando existen snapshots temporales, el reporte HTML incluye una sección de evolución que genera un gráfico SVG\cite{svg} independiente por cada moneda utilizada en la sesión. Cada gráfico es un diagrama de líneas con las siguientes características:
+
+\begin{itemize}[nosep]
+    \item \textbf{Una línea por parte}: cada participante (por ejemplo, Alice, Bob) tiene una polilínea coloreada que muestra la evolución de su saldo en esa moneda a lo largo del tiempo.
+    \item \textbf{Ejes compartidos}: el eje X muestra las fechas de los snapshots y el eje Y muestra los montos, con una grilla horizontal de referencia de 4 divisiones y etiquetas numéricas.
+    \item \textbf{Línea de referencia en cero}: si el rango de valores incluye tanto positivos como negativos, se dibuja una línea punteada horizontal en $y = 0$ para facilitar la lectura.
+    \item \textbf{Leyenda apilada}: en la esquina superior derecha, una leyenda vertical muestra el color asignado a cada parte, evitando solapamientos.
+    \item \textbf{Soporte para punto único}: cuando hay un solo snapshot, en lugar de dibujar una polilínea (que sería invisible), se dibuja un único círculo en la posición correspondiente.
+\end{itemize}
+
+El rango del eje Y se calcula automáticamente a partir de los valores mínimos y máximos de todas las series; si todos los valores son iguales, se aplica un margen artificial del 10\% para evitar divisiones por cero en el escalado. Las coordenadas de pantalla se calculan con funciones \texttt{toX} y \texttt{toY} que mapean linealmente el dominio de fechas y valores al espacio de píxeles del gráfico.
+
+Adicionalmente, se genera una tabla HTML de eventos que lista cronológicamente todos los depósitos, cambios de fecha y ejecuciones registrados durante la sesión.
 
 \subsection{Evaluación con fecha mutable}
 
@@ -871,7 +918,7 @@ Las identidades de las partes (\texttt{yo} y \texttt{contraparte}) son configura
 
 El sistema de comandos distingue entre directivas (prefijadas con \texttt{:}) y expresiones directas. Las expresiones se parsean como \texttt{Comm} y se evalúan con \texttt{evalComm} a través de la mónada \texttt{Interp}, mientras que las directivas realizan acciones especiales como exportar reportes, mostrar el AST, o modificar el oráculo.
 
-Todo comando del REPL puede abreviarse a su primer carácter (por ejemplo, \texttt{:q} equivale a \texttt{:quit}, \texttt{:r} a \texttt{:reporte}, etc.).
+Cada comando del REPL define uno o más alias (por ejemplo, \texttt{:q} para \texttt{:quit}, \texttt{:e} para \texttt{:eval}, \texttt{:l} para \texttt{:load}). La resolución de comandos utiliza un esquema de dos fases: primero se busca una coincidencia exacta contra los alias definidos, y solo si no se encuentra se recurre a coincidencia por prefijo (\texttt{isPrefixOf}). Este diseño evita ambigüedades; por ejemplo, \texttt{:q} resuelve exactamente a \texttt{:quit} sin confundirse con \texttt{:quote}, a pesar de que \texttt{:q} es prefijo de ambos.
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{Bibliografía}
@@ -904,6 +951,11 @@ Hackage. Documentación de Data.Time.
 \bibitem{mtl}
 Hackage. Documentación de mtl (Monad Transformer Library).
 \\\url{https://hackage.haskell.org/package/mtl}
+
+\bibitem{svg}
+W3C. \textit{Scalable Vector Graphics (SVG) 2}.
+W3C Candidate Recommendation, 2018.
+\\\url{https://www.w3.org/TR/SVG2/}
 
 \bibitem{lattice}
 J. Cox, S. Ross, M. Rubinstein.

@@ -41,6 +41,7 @@ library:
     - Monads
     - Types
     - Exportar
+    - ExportarAST
 
 executables:
   financial-contracts-exe:

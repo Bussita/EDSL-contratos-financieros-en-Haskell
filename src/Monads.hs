@@ -12,7 +12,7 @@ import Data.Time (Day)
 import Types
 import AST
 
--- ─── Estado mutable del intérprete ────────────────────────────────────────────
+-- Estado mutable del intérprete
 
 type ContractStore = Map String Contract
 type PendingStore  = Map String PendingContract

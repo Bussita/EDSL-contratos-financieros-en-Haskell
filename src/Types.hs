@@ -40,7 +40,7 @@ data Env = Env
   , contraparte :: PartyId
   }
 
--- | Saldos de todas las partes: PartyId → (Currency → monto).
+-- | Saldos de todas las partes: (PartyId, (Currency, monto)).
 type Wallets = Map PartyId (Map Currency Double)
 
 -- | Estado de firma de un contrato pendiente.
