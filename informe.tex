@@ -168,7 +168,7 @@ En este trabajo desarrollamos un \textbf{Embedded Domain Specific Language} (EDS
     \item \textbf{Simular} la ejecución con billeteras, verificación de saldos y firmas duales.
     \item \textbf{Condicionar} contratos a observables booleanos con \texttt{if}/\texttt{else}.
     \item \textbf{Avanzar en el tiempo} con \texttt{setfecha}, observando la evolución temporal de las billeteras.
-    \item \textbf{Exportar} resultados a reportes HTML con gráficos SVG embebidos, y diagramas de AST.
+    \item \textbf{Exportar} resultados a reportes HTML con tablas y gráficos CSS embebidos, y diagramas de AST en SVG.
 \end{enumerate}
 
 El lenguaje se presenta con un REPL interactivo que permite definir, componer, evaluar y visualizar contratos financieros de forma inmediata. Se trata de una implementación del paper de Peyton Jones et al., con simplificaciones en la evaluación de \texttt{or} y \texttt{then}, y extensiones significativas en cuanto a billeteras, firmas, condicionales, exportación y visualización.
@@ -306,7 +306,7 @@ propose pago2 give scale 2000.0 one USD;
 sign pago2 Bussa; sign pago2 Banco; execute pago2
 \end{lstlisting}
 
-Este ejemplo muestra el flujo completo de simulación: se fija una fecha inicial, se depositan fondos en las billeteras, se avanza en el tiempo, se proponen contratos, ambas partes firman, y se ejecutan. Al exportar un reporte HTML, se genera una tabla de eventos y un gráfico SVG que muestra la evolución de los saldos a lo largo del tiempo.
+Este ejemplo muestra el flujo completo de simulación: se fija una fecha inicial, se depositan fondos en las billeteras, se avanza en el tiempo, se proponen contratos, ambas partes firman, y se ejecutan. Al exportar un reporte HTML, se genera una tabla de eventos y una tabla de evolución por moneda que muestra cómo varían los saldos de cada parte a lo largo del tiempo.
 
 Finalmente, un ejemplo con condicionales:
 
@@ -459,7 +459,7 @@ El trabajo se encuentra dividido en los siguientes directorios principales:
     \item \textbf{Parser.hs.} Implementa el parser del lenguaje utilizando Parsec, con gramática de precedencias para contratos, observables numéricos, observables booleanos y todos los comandos.
     \item \textbf{Evaluator.hs.} Implementa el evaluador de contratos, observables, observables booleanos y comandos (incluyendo \texttt{deposit}, \texttt{propose}, \texttt{sign}, \texttt{execute}, \texttt{setfecha}), además de las operaciones de billetera.
     \item \textbf{PrettyPrinter.hs.} Pretty printer con niveles de precedencia, formateo de cashflows, billeteras, historial, pendientes y errores.
-    \item \textbf{Exportar.hs.} Genera reportes HTML autocontenidos con gráficos SVG embebidos (incluyendo barras de cashflows y gráficos de evolución temporal de billeteras).
+    \item \textbf{Exportar.hs.} Genera reportes HTML autocontenidos con barras de cashflows en HTML+CSS y tablas de evolución temporal de billeteras.
     \item \textbf{ExportarAST.hs.} Genera diagramas de árbol SVG del AST de contratos, incluyendo el layout jerárquico con posicionamiento automático de nodos y coloreado por tipo de combinador.
 \end{itemize}
 
@@ -759,7 +759,7 @@ data WalletSnapshot = WalletSnapshot
   } deriving (Show, Eq, Generic)
 \end{lstlisting}
 
-Estos snapshots se utilizan al exportar el reporte HTML para generar gráficos SVG de evolución temporal: una tabla de eventos y un gráfico de líneas por moneda que muestra la evolución del saldo de cada parte a lo largo del tiempo.
+Estos snapshots se utilizan al exportar el reporte HTML para generar la sección de evolución temporal: una tabla de eventos y una tabla de saldos por moneda que muestra la evolución del saldo de cada parte a lo largo del tiempo.
 
 \subsection{Oráculo configurable}
 
@@ -820,7 +820,7 @@ De esta manera, una expresión como \texttt{(one USD and give one EUR) or zero} 
 
 \subsection{Exportación y visualización}
 
-El sistema ofrece múltiples opciones de exportación y visualización:
+El sistema ofrece dos principales opciones en cuento a la exportación y visualización, las cuales son un \textbf{reporte HTML} completo y un archivo SVG para una mejor \textbf{visualización del AST}. Una decisión personal fue solo usar SVG para el AST y no para el reporte HTML por una razón simple: el uso del formato de vectores SVG implica muchas líneas de código referentes al cálculo de coordenadas, lo cual hace el código difícilmente legible. Por lo que para las estadísticas mostradas en el reporte HTML, las cuales son modelables con HTML\texttt{+}CSS puro, se decidió sacrificar un poco la calidad del gráfico a costa de mejorar la legibilidad del código. 
 
 \subsubsection{Reporte HTML}
 
@@ -829,8 +829,8 @@ El comando \texttt{:reporte} genera un archivo HTML autocontenido (sin dependenc
 \begin{enumerate}[nosep]
     \item \textbf{Contratos definidos}: tabla con nombre y definición de cada contrato en el store.
     \item \textbf{Billeteras}: tarjetas con el saldo de cada parte por moneda, coloreado en verde (positivo) o rojo (negativo).
-    \item \textbf{Historial de ejecuciones}: para cada ejecución, una tarjeta con los cashflows en tabla y un gráfico SVG de barras embebido inline.
-    \item \textbf{Evolución temporal}: una tabla de eventos (depósitos, setfecha, ejecuciones) y un gráfico SVG de líneas por moneda, mostrando cómo evoluciona el saldo de cada parte a lo largo del tiempo. Los gráficos se generan con ejes compartidos, leyenda apilada y soporte para datos de un solo punto.
+    \item \textbf{Historial de ejecuciones}: para cada ejecución, una tarjeta con los cashflows en tabla y un gráfico de barras bidireccionales en HTML+CSS embebido inline.
+    \item \textbf{Evolución temporal}: una tabla de eventos (depósitos, setfecha, ejecuciones) y una tabla de saldos por moneda, mostrando cómo evoluciona el saldo de cada parte a lo largo del tiempo con valores coloreados (verde positivo, rojo negativo).
 \end{enumerate}
 
 Todo el CSS está inline en el HTML, lo que lo hace completamente portable.
@@ -845,37 +845,27 @@ El comando \texttt{:ast-svg} genera un diagrama SVG\cite{svg} del árbol de sint
     \item \textbf{Renderizado.} Cada nodo se dibuja como un rectángulo redondeado (\texttt{<rect rx='6'>}) con texto centrado, y las conexiones padre-hijo como líneas (\texttt{<line>}). Las aristas se renderizan primero para que queden debajo de los nodos visualmente.
 \end{enumerate}
 
-Cada tipo de combinador tiene un color distintivo: azul (\texttt{and}), rojo (\texttt{give}), verde (\texttt{one}), naranja (\texttt{then}), púrpura (\texttt{or}), cyan (\texttt{scale}), verde oscuro (\texttt{truncate}), magenta (\texttt{if}) y gris (\texttt{zero}). Para nodos con información adicional (como el observable en \texttt{scale} o la fecha en \texttt{truncate}), la etiqueta se divide en dos líneas de texto SVG con fuentes de diferente tamaño.
+Cada tipo de combinador tiene un color distintivo: azul (\texttt{and}), rojo (\texttt{give}), verde (\texttt{one}), naranja (\texttt{then}), púrpura (\texttt{or}), cyan (\texttt{scale}), verde oscuro (\texttt{truncate}), magenta (\texttt{if}) y gris (\texttt{zero}).
 
 El tamaño total del SVG se calcula dinámicamente a partir del ancho del árbol y su profundidad, garantizando que el diagrama se ajuste exactamente al contenido sin espacio desperdiciado.
 
-\subsubsection{Gráfico de barras SVG}
+\subsubsection{Gráfico de barras HTML+CSS}
 
-Cada entrada del historial en el reporte HTML incluye un gráfico SVG\cite{svg} completo embebido inline, compuesto por tres secciones apiladas verticalmente:
+Cada entrada del historial en el reporte HTML incluye un gráfico de barras bidireccionales implementado enteramente con HTML y CSS, compuesto por dos partes:
 
 \begin{enumerate}[nosep]
-    \item \textbf{Tabla de cashflows.} Una tabla renderizada con primitivas SVG (\texttt{<text>} y \texttt{<rect>}) que muestra fecha, monto, origen y destino de cada flujo. Las filas alternan color de fondo para facilitar la lectura, y cada moneda se colorea con un color distintivo (azul para USD, naranja para EUR, púrpura para ARS, teal para GBP).
-    \item \textbf{Barras horizontales.} Un gráfico de barras desde la perspectiva de una parte, donde el eje central (x=230) separa ingresos a la derecha (barras verdes) de egresos a la izquierda (barras rojas). El ancho de cada barra se normaliza linealmente respecto al valor absoluto máximo, lo que permite comparar visualmente magnitudes relativas.
-    \item \textbf{Resumen neto por moneda.} Barras horizontales que muestran el saldo neto en cada moneda, con etiquetas que indican el signo y valor exacto. Utiliza colores por moneda en vez del esquema ingreso/egreso.
+    \item \textbf{Barras por cashflow.} Para cada flujo de caja se genera una fila con una etiqueta (monto, moneda, dirección) y una barra horizontal. El contenedor se divide en dos mitades: la izquierda muestra egresos (barras rojas creciendo hacia la izquierda) y la derecha muestra ingresos (barras verdes creciendo hacia la derecha). El ancho de cada barra se normaliza como porcentaje del valor absoluto máximo.
+    \item \textbf{Resumen neto por moneda.} Se acumulan los flujos por moneda y se muestra una barra horizontal por cada moneda con su saldo neto, coloreada en verde o rojo según el signo.
 \end{enumerate}
 
-La altura total del SVG se calcula dinámicamente como la suma de las tres secciones más márgenes, adaptándose al número de cashflows.
+\subsubsection{Tabla de evolución temporal}
 
-\subsubsection{Gráfico de evolución temporal}
+Cuando existen snapshots temporales, el reporte HTML incluye una sección de evolución compuesta por:
 
-Cuando existen snapshots temporales, el reporte HTML incluye una sección de evolución que genera un gráfico SVG\cite{svg} independiente por cada moneda utilizada en la sesión. Cada gráfico es un diagrama de líneas con las siguientes características:
-
-\begin{itemize}[nosep]
-    \item \textbf{Una línea por parte}: cada participante (por ejemplo, Alice, Bob) tiene una polilínea coloreada que muestra la evolución de su saldo en esa moneda a lo largo del tiempo.
-    \item \textbf{Ejes compartidos}: el eje X muestra las fechas de los snapshots y el eje Y muestra los montos, con una grilla horizontal de referencia de 4 divisiones y etiquetas numéricas.
-    \item \textbf{Línea de referencia en cero}: si el rango de valores incluye tanto positivos como negativos, se dibuja una línea punteada horizontal en $y = 0$ para facilitar la lectura.
-    \item \textbf{Leyenda apilada}: en la esquina superior derecha, una leyenda vertical muestra el color asignado a cada parte, evitando solapamientos.
-    \item \textbf{Soporte para punto único}: cuando hay un solo snapshot, en lugar de dibujar una polilínea (que sería invisible), se dibuja un único círculo en la posición correspondiente.
-\end{itemize}
-
-El rango del eje Y se calcula automáticamente a partir de los valores mínimos y máximos de todas las series; si todos los valores son iguales, se aplica un margen artificial del 10\% para evitar divisiones por cero en el escalado. Las coordenadas de pantalla se calculan con funciones \texttt{toX} y \texttt{toY} que mapean linealmente el dominio de fechas y valores al espacio de píxeles del gráfico.
-
-Adicionalmente, se genera una tabla HTML de eventos que lista cronológicamente todos los depósitos, cambios de fecha y ejecuciones registrados durante la sesión.
+\begin{enumerate}[nosep]
+    \item \textbf{Tabla de eventos.} Lista cronológica de todos los depósitos, cambios de fecha y ejecuciones registrados durante la sesión, con columnas de fecha y descripción del evento.
+    \item \textbf{Tabla de saldos por moneda.} Para cada moneda utilizada en la sesión se genera una tabla HTML con una columna por cada parte y una fila por cada snapshot temporal. Los valores positivos se muestran en verde y los negativos en rojo, utilizando las clases CSS \texttt{pos} y \texttt{neg}.
+\end{enumerate}
 
 \subsection{Evaluación con fecha mutable}
 

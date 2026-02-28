@@ -37,13 +37,27 @@
   .entry-parties { color: #424242; font-size: 0.85rem;
                    background: #E3F2FD; padding: 0.1rem 0.5rem;
                    border-radius: 12px; }
-  .svg-container { margin-top: 1rem; overflow-x: auto; }
+  .bar-chart { margin-top: 1rem; padding: 0.75rem; background: #FAFAFA;
+               border-radius: 6px; }
+  .bar-chart h4 { font-size: 0.9rem; color: #424242; margin-bottom: 0.5rem; }
+  .neto-titulo { margin-top: 1rem; padding-top: 0.75rem;
+                 border-top: 1px solid #E0E0E0; }
+  .bar-row { display: flex; align-items: center; height: 26px; gap: 8px; }
+  .bar-track { flex: 1; display: flex; height: 18px; }
+  .bar-half { width: 50%; display: flex; overflow: hidden; }
+  .bar-half-left { justify-content: flex-end; }
+  .bar { height: 100%; border-radius: 2px; min-width: 2px; }
+  .bar-label { font-size: 0.8rem; color: #424242; white-space: nowrap;
+               min-width: 140px; }
+  .neto-row { display: flex; align-items: center; height: 30px; gap: 8px; }
+  .neto-cur { font-weight: 600; font-size: 0.85rem; min-width: 40px; }
+  .neto-bar { height: 16px; border-radius: 2px; min-width: 2px; }
 </style></head>
 
 <body>
 <div class='container'>
 <h1>Reporte de Sesión EDSL Financiero</h1>
-<p class='subtitulo'>Fecha: 2026-02-26  |  Partes: Empresa / Mercado</p>
+<p class='subtitulo'>Fecha: 2026-02-28  |  Partes: Alice / Bob</p>
 <section><h2>Contratos Definidos</h2><table><thead><tr><th>Nombre</th><th>Definición</th></tr></thead><tbody><tr><td><code>alquiler</code></td><td><code>give scale 50000.0 one ARS</code></td></tr><tr><td><code>exportaciones</code></td><td><code>scale 3000.0 one EUR</code></td></tr><tr><td><code>importaciones</code></td><td><code>give scale 1000.0 one USD</code></td></tr><tr><td><code>impuestos</code></td><td><code>give truncate 2026-04-30 scale 100000.0 one ARS</code></td></tr><tr><td><code>resultado</code></td><td><code>((((ventas_locales and exportaciones) and salarios) and alquiler) and importaciones) and impuestos</code></td></tr><tr><td><code>salarios</code></td><td><code>give scale 200000.0 one ARS</code></td></tr><tr><td><code>ventas_locales</code></td><td><code>scale 500000.0 one ARS</code></td></tr></tbody></table></section>
 <section><h2>Billeteras</h2><p class='empty'>Sin billeteras registradas</p></section>
 <section><h2>Historial de Ejecuciones</h2><p class='empty'>Sin ejecuciones registradas</p></section>

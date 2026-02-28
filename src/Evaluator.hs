@@ -122,6 +122,7 @@ evalContract (If cond c1 c2) = do
   result <- evalBool cond
   if result then evalContract c1 else evalContract c2
 
+-- no deberia llegar acá porque se pasa por substContract antes.
 evalContract (Var name) =
   throwErr (EvalMsg $ "Variable no resuelta: " ++ name)
 
