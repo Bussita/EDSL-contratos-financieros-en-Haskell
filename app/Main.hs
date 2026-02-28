@@ -23,7 +23,7 @@ import Monads
 import Exportar
 import ExportarAST
 
--- ─── Punto de entrada ─────────────────────────────────────────────────────────
+-- Punto de entrada
 
 main :: IO ()
 main = runInputT defaultSettings main'
@@ -63,17 +63,17 @@ iprompt = "Fin> "
 ioExceptionCatcher :: IOException -> IO (Maybe a)
 ioExceptionCatcher _ = return Nothing
 
--- ─── Estado del REPL ──────────────────────────────────────────────────────────
+-- Estado del REPL (Read Eval Print Loop)
 -- El estado del intérprete es (InterpState, Env).
--- InterpState  → lo mutable del lenguaje (wallets, contratos, pending, cotizaciones, fecha)
--- Env          → lo que Interp lee con `ask` (oráculo, partes actuales)
+-- InterpState  -> lo mutable del lenguaje (wallets, contratos, pending, cotizaciones, fecha)
+-- Env          -> lo que Interp lee con `ask` (oráculo, partes actuales)
 --
 -- Los comandos REPL que modifican cotizaciones o partes actualizan el Env
 -- directamente; los demás sólo modifican InterpState vía runInterp.
 
 type ReplState = (InterpState, Env)
 
--- ─── Bucle REPL ───────────────────────────────────────────────────────────────
+-- Bucle REPL
 
 readevalprint :: [String] -> ReplState -> InputT IO ()
 readevalprint _args st0 =
@@ -92,7 +92,7 @@ readevalprint _args st0 =
     lift $ putStrLn ("Intérprete de " ++ iname ++ ".\nEscriba :? para recibir ayuda.")
     rec st0
 
--- ─── Comandos ─────────────────────────────────────────────────────────────────
+-- Comandos
 
 data Command
   = EvalComm     String
@@ -126,13 +126,13 @@ interpretCommand x = lift $
       case exact of
         [Cmd _ _ f _] -> return (f t)
         _ -> case prefixed of
-          []             -> putStrLn ("Comando desconocido `" ++ cmd ++ "'. Escriba :? para recibir ayuda.")
+          []             -> putStrLn ("Comando desconocido '" ++ cmd ++ "'. Escriba :? para recibir ayuda.")
                             >> return Noop
           [Cmd _ _ f _] -> return (f t)
           _              -> putStrLn "Comando ambigüo." >> return Noop
     else return (EvalComm x)
 
--- ─── Manejo de comandos ───────────────────────────────────────────────────────
+-- Manejo de comandos
 
 handleCommand :: ReplState -> Command -> InputT IO (Maybe ReplState)
 handleCommand _   Quit = lift (putStrLn "Saliendo del intérprete financiero.") >> return Nothing
@@ -149,9 +149,12 @@ handleCommand st (PrintAST s) = do
   return (Just st)
 
 handleCommand st (PrintPP s) = do
+  let ist = fst st
   case parse parserComm "<interactive>" s of
     Left err   -> lift $ putStrLn $ "Error de parseo: " ++ show err
-    Right comm -> lift $ putStrLn $ ppComm comm
+    Right comm -> case substComm (isContracts ist) comm of -- necesario para que el pretty printer tome variables 
+      Left err       -> lift $ putStrLn $ ppComm comm
+      Right resolved -> lift $ putStrLn $ ppComm resolved
   return (Just st)
 
 handleCommand st ShowStore = do
@@ -168,8 +171,8 @@ handleCommand st ShowPending = do
 handleCommand st (ShowWallet s) = do
   let ws = isWallets (fst st)
   lift $ case words s of
-    []      -> putStrLn $ ppWallets ws
-    [party] -> putStrLn $ ppWallet ws party
+    []      -> putStrLn $ ppWallets ws -- todas
+    [party] -> putStrLn $ ppWallet ws party -- una
     _       -> putStrLn "Uso: :wallet [<parte>]"
   return (Just st)
 
@@ -224,8 +227,8 @@ handleCommand st (LoadFile path) = do
                           >> return (Just st)
             Right comm -> runCommInRepl st comm ("Archivo " ++ path' ++ " cargado correctamente.")
 
--- | Evaluación de un comando del lenguaje (la ruta principal del REPL).
---   Incluye: let, run, deposit, propose, sign, execute.
+-- Evaluación de un comando del lenguaje (la ruta principal del REPL).
+-- Incluye: let, run, deposit, propose, sign, execute.
 handleCommand st (EvalComm s) = do
   case parse parserComm "<interactive>" s of
     Left err   -> lift (putStrLn $ "Error de parseo: " ++ show err) >> return (Just st)
@@ -253,7 +256,13 @@ handleCommand (ist, env) (ReplSetFecha s) =
       lift $ putStrLn $ "Fecha inválida: " ++ show err
       return (Just (ist, env))
     Right d  -> do
-      let newIst = ist { isFechaHoy = d }
+      let ws     = isWallets ist
+          snap   = WalletSnapshot
+                     { snapFecha   = d
+                     , snapWallets = ws
+                     , snapEvento  = "setfecha " ++ show d
+                     }
+          newIst = ist { isFechaHoy = d, isSnapshots = isSnapshots ist ++ [snap] }
           newEnv = env { fechaHoy = d }
       lift $ putStrLn $ "Fecha actualizada a " ++ show d
       return (Just (newIst, newEnv))
@@ -271,7 +280,7 @@ handleCommand (ist, env) (ExportHTML s) = do
 handleCommand st (ExportASTSVG s) = do
   let (ist, _env) = st
       (contractStr, pathStr) = parseGraficoArg s
-      defaultName = trim contractStr ++ ".svg"
+      defaultName = trim contractStr ++ ".svg" -- el comportamiento puede no ser esperado si no se usa >
       path = case pathStr of
                Just p  -> p
                Nothing -> defaultName
@@ -286,10 +295,9 @@ handleCommand st (ExportASTSVG s) = do
   return (Just st)
   where trim = reverse . dropWhile (== ' ') . reverse . dropWhile (== ' ')
 
--- ─── Helper: ejecutar un Comm y actualizar el ReplState ──────────────────────
-
--- | Corre un Comm via Interp, actualiza el InterpState y muestra resultados.
---   `successMsg` se muestra si no hubo cashflows (ej. "asignado correctamente").
+-- Helper: ejecutar un Comm y actualizar el ReplState
+-- Corre un Comm via Interp, actualiza el InterpState y muestra resultados.
+-- `successMsg` se muestra si no hubo cashflows (ej. "asignado correctamente").
 runCommInRepl :: ReplState -> Comm -> String -> InputT IO (Maybe ReplState)
 runCommInRepl (ist, env) comm successMsg = do
   case runInterp (evalComm comm) ist env of
@@ -297,22 +305,23 @@ runCommInRepl (ist, env) comm successMsg = do
       lift $ putStrLn $ ppError err
       return (Just (ist, env))
     Right (((), newIst), cfs) -> do
-      let newEnv = env { fechaHoy = isFechaHoy newIst }
+      let newEnv = env { fechaHoy = isFechaHoy newIst } -- lo unico que puede cambiar de Env (con el comando setfecha)
       lift $ do
         if null cfs
           then when (not (null successMsg)) $ putStrLn successMsg
           else do
             putStr $ ppCashflows cfs
             -- Si el comando fue Execute, mostrar billeteras afectadas
-            showWalletDiff ist newIst cfs
+            showAffectedWallets ist newIst cfs
       return (Just (newIst, newEnv))
--- | Muestra las billeteras de las partes involucradas en los cashflows.
-showWalletDiff :: InterpState -> InterpState -> [Cashflow] -> IO ()
-showWalletDiff _old new cfs = do
+
+-- Muestra las billeteras de las partes involucradas en los cashflows.
+showAffectedWallets :: InterpState -> InterpState -> [Cashflow] -> IO ()
+showAffectedWallets _old new cfs = do
   let parties = uniqueParties cfs
   when (not (null parties)) $ do
     putStrLn "Billeteras actualizadas:"
-    mapM_ (\p -> putStr $ ppWallet (isWallets new) p) parties
+    mapM_ (\p -> putStrLn $ ppWallet (isWallets new) p) parties
 
 uniqueParties :: [Cashflow] -> [PartyId]
 uniqueParties cfs =
@@ -322,13 +331,13 @@ uniqueParties cfs =
     nubOrd []     = []
     nubOrd (x:xs) = x : nubOrd (filter (/= x) xs)
 
--- ─── Auxiliares ───────────────────────────────────────────────────────────────
+-- Auxiliares
 
 parseGraficoArg :: String -> (String, Maybe FilePath)
 parseGraficoArg s =
   case break (== '>') s of
     (contrato, [])     -> (trim contrato, Nothing)
-    (contrato, _:path) -> (trim contrato, Just (trim path))
+    (contrato, _:path) -> (trim contrato, Just (trim path)) -- el _ descarta el >
   where
     trim = reverse . dropWhile (== ' ') . reverse . dropWhile (== ' ')
 
@@ -342,7 +351,7 @@ isCommentOrEmpty s =
   let trimmed = dropWhile isSpace s
   in  null trimmed || isPrefixOf "--" trimmed
 
--- ─── Tabla de comandos ────────────────────────────────────────────────────────
+-- Tabla de comandos
 
 data InteractiveCommand = Cmd [String] String (String -> Command) String
 
@@ -382,5 +391,5 @@ helpTxt cs =
   ++ unlines
        (map (\(Cmd c a _ d) ->
                let ct = concat (intercalate ", " (map (++ if null a then "" else " " ++ a) c) : [])
-               in  ct ++ replicate (max 2 (26 - length ct)) ' ' ++ d)
+               in  ct ++ replicate (max 2 (26 - length ct)) ' ' ++ d) -- el replicate son los espacios en el help
             cs)

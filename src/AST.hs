@@ -4,7 +4,7 @@ import Types
 import Data.Time (Day)
 import GHC.Real (Fractional(fromRational))
 
--- ─── Contratos ────────────────────────────────────────────────────────────────
+-- Contratos
 
 data Contract
   = Zero
@@ -69,7 +69,7 @@ instance Fractional a => Fractional (Obs a) where
   (/)          = Div
   fromRational = Konst . fromRational
 
--- ─── Contratos pendientes de firma ────────────────────────────────────────────
+-- Contratos pendientes de firma
 
 data PendingContract = PendingContract
   { pcName      :: String

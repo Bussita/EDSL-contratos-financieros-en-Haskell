@@ -11,9 +11,7 @@ import AST
 import Monads
 import PrettyPrinter
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Directorio de salida
--- ═══════════════════════════════════════════════════════════════════════════════
 
 -- Directorio donde se guardan los archivos generados.
 outputDir :: FilePath
@@ -27,9 +25,7 @@ ensureOutputPath path = do
   return fullPath
   where fullPath = outputDir ++ "/" ++ path
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Reporte HTML completo
--- ═══════════════════════════════════════════════════════════════════════════════
 
 -- Genera un reporte HTML autocontenido con contratos, billeteras,
 -- historial y gráficos embebidos inline.
@@ -55,9 +51,7 @@ renderReporte ist env = unlines
   , "</div></body></html>"
   ]
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Sección: Contratos definidos
--- ═══════════════════════════════════════════════════════════════════════════════
 
 seccionContratos :: ContractStore -> String
 seccionContratos cs
@@ -73,9 +67,7 @@ contratoFila (name, c) =
   "<tr><td><code>" ++ escHtml name ++ "</code></td>"
   ++ "<td><code>" ++ escHtml (ppContract c) ++ "</code></td></tr>"
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Sección: Billeteras
--- ═══════════════════════════════════════════════════════════════════════════════
 
 seccionBilleteras :: Wallets -> String
 seccionBilleteras ws
@@ -93,9 +85,7 @@ walletCard (party, bals) =
             | (cur, v) <- Map.toList bals ]
   ++ "</tbody></table></div>"
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Sección: Historial de ejecuciones
--- ═══════════════════════════════════════════════════════════════════════════════
 
 seccionHistorial :: PartyId -> [HistorialEntry] -> String
 seccionHistorial _ [] =
@@ -134,12 +124,10 @@ tablaCashflows cfs =
             | cf <- cfs ]
   ++ "</tbody></table>"
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Gráfico de barras HTML+CSS de cashflows
--- ═══════════════════════════════════════════════════════════════════════════════
+
 -- Genera barras horizontales con HTML y CSS puro (sin SVG). Se embebe inline
 -- en cada entrada del historial dentro del reporte HTML.
-
 renderBarChart :: PartyId -> [Cashflow] -> String
 renderBarChart _party [] = ""
 renderBarChart party cfs =
@@ -156,8 +144,8 @@ renderBarChart party cfs =
     netRows = Map.toList netMap
     maxAbsN = maximum (1 : map (abs . snd) netRows)
 
--- | Una fila del gráfico de barras. Positivos van a la derecha del centro,
---   negativos a la izquierda.
+-- Una fila del gráfico de barras. Positivos van a la derecha del centro,
+-- negativos a la izquierda.
 renderBarra :: Double -> (Double, String) -> String
 renderBarra maxAbs (val, label) =
     let pct = show (round (abs val / maxAbs * 100) :: Int) ++ "%"
@@ -176,7 +164,7 @@ renderBarra maxAbs (val, label) =
         ++ "<span class='bar-label'>" ++ escHtml label ++ "</span>"
         ++ "</div>"
 
--- | Una fila del resumen neto por moneda.
+-- Una fila del resumen neto por moneda.
 renderNetoRow :: Double -> (Currency, Double) -> String
 renderNetoRow maxAbsN (cur, net) =
     let pct  = show (round (abs net / maxAbsN * 100) :: Int) ++ "%"
@@ -192,7 +180,7 @@ renderNetoRow maxAbsN (cur, net) =
         ++ sign ++ showDouble net ++ "</span>"
         ++ "</div>"
 
--- ─── Helpers de barras ────────────────────────────────────────────────────────
+-- Helpers de barras
 
 cfToEntry :: PartyId -> Cashflow -> (Double, String)
 cfToEntry party cf
@@ -225,12 +213,10 @@ colorIncoming = "#43A047"
 colorOutgoing  = "#E53935"
 colorNeutral   = "#BDBDBD"
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Sección: Evolución temporal de billeteras (tabla)
--- ═══════════════════════════════════════════════════════════════════════════════
+
 -- Genera una tabla HTML por moneda mostrando la evolución de los saldos de
 -- cada parte a lo largo de los snapshots registrados, más una tabla de eventos.
-
 seccionEvolucion :: [WalletSnapshot] -> String
 seccionEvolucion [] =
   seccion "Evolución Temporal" "<p class='empty'>Sin snapshots registrados</p>"
@@ -260,7 +246,7 @@ eventoFila s =
   "<tr><td>" ++ show (snapFecha s) ++ "</td>"
   ++ "<td>" ++ escHtml (snapEvento s) ++ "</td></tr>"
 
--- ─── Tabla de saldos por moneda ──────────────────────────────────────────────
+-- Tabla de saldos por moneda
 
 tablaMoneda :: [WalletSnapshot] -> Currency -> String
 tablaMoneda snaps cur =
@@ -294,9 +280,7 @@ walletBalanceSnap snap party cur =
     Nothing  -> 0
     Just bal -> Map.findWithDefault 0 cur bal
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Helpers HTML
--- ═══════════════════════════════════════════════════════════════════════════════
 
 seccion :: String -> String -> String
 seccion titulo contenido =
@@ -308,7 +292,7 @@ htmlTitulo t = "<h1>" ++ escHtml t ++ "</h1>"
 htmlSubtitulo :: String -> String
 htmlSubtitulo t = "<p class='subtitulo'>" ++ escHtml t ++ "</p>"
 
--- | Escapa caracteres especiales para HTML.
+-- Escapa caracteres especiales para HTML.
 escHtml :: String -> String
 escHtml = concatMap esc
   where
@@ -319,9 +303,7 @@ escHtml = concatMap esc
     esc '\'' = "&#39;"
     esc c    = [c]
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- CSS del reporte
--- ═══════════════════════════════════════════════════════════════════════════════
+-- CSS del reporte (header)
 
 htmlHeader :: String
 htmlHeader = unlines

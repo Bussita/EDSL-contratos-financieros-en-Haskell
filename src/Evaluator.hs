@@ -8,7 +8,7 @@ import Types
 import AST
 import Monads
 
--- ─── Sustitución de variables ─────────────────────────────────────────────────
+-- Sustitución de variables
 
 substContract :: ContractStore -> Contract -> Either EvalError Contract
 substContract store = go Set.empty
@@ -30,7 +30,17 @@ substContract store = go Set.empty
             Just c  -> go (Set.insert name visited) c
             Nothing -> Left (EvalMsg $ "Contrato no definido: " ++ name)
 
--- ─── Evaluación de observables booleanos ─────────────────────────────────────
+substComm :: ContractStore -> Comm -> Either EvalError Comm
+substComm store (Assign n c)       = Assign n      <$> substContract store c
+substComm store (Run c)            = Run            <$> substContract store c
+substComm store (Seq c1 c2)        = Seq            <$> substComm store c1 <*> substComm store c2
+substComm store (Propose n c)      = Propose n      <$> substContract store c
+substComm _     (Deposit p cur a)  = Right (Deposit p cur a)
+substComm _     (Sign n p)         = Right (Sign n p)
+substComm _     (Execute n)        = Right (Execute n)
+substComm _     (SetFecha d)       = Right (SetFecha d)
+
+-- Evaluación de observables booleanos
 
 evalBool :: ObsBool -> Interp Bool
 evalBool (Gt  a b) = (>)  <$> evalObs a <*> evalObs b
@@ -39,7 +49,7 @@ evalBool (Gte a b) = (>=) <$> evalObs a <*> evalObs b
 evalBool (Lte a b) = (<=) <$> evalObs a <*> evalObs b
 evalBool (Eq  a b) = (==) <$> evalObs a <*> evalObs b
 
--- ─── Evaluación de observables numéricos ─────────────────────────────────────
+-- Evaluación de observables numéricos
 
 evalObs :: Obs Double -> Interp Double
 evalObs (Konst x)           = return x
@@ -60,7 +70,7 @@ evalObs (Div a b) = do
   vb <- evalObs b
   if vb == 0 then throwErr DivByZero else return (va / vb)
 
--- ─── Evaluación de contratos ─────────────────────────────────────────────────
+-- Evaluación de contratos
 -- NOTA: fechaHoy se lee de InterpState (isFechaHoy), no del Env.
 -- Esto permite que setfecha cambie la fecha de evaluación en tiempo de ejecución.
 
@@ -126,7 +136,7 @@ evalContract (If cond c1 c2) = do
 evalContract (Var name) =
   throwErr (EvalMsg $ "Variable no resuelta: " ++ name)
 
--- ─── Evaluación de comandos ───────────────────────────────────────────────────
+-- Evaluación de comandos
 
 evalComm :: Comm -> Interp ()
 
@@ -212,8 +222,8 @@ evalComm (Execute name) = do
                         , snapEvento  = "execute " ++ name
                         }
 
--- | Cambia la fecha de evaluación y registra un snapshot de las billeteras
---   actuales en esa fecha (útil para ver el estado en distintos momentos).
+-- Cambia la fecha de evaluación y registra un snapshot de las billeteras
+-- actuales en esa fecha (útil para ver el estado en distintos momentos).
 evalComm (SetFecha newDate) = do
   putFechaHoy newDate
   ws <- getWallets
@@ -223,7 +233,7 @@ evalComm (SetFecha newDate) = do
     , snapEvento  = "setfecha " ++ show newDate
     }
 
--- ─── Operaciones de billetera ─────────────────────────────────────────────────
+-- Operaciones de billetera
 
 walletBalance :: Wallets -> PartyId -> Currency -> Double
 walletBalance ws party cur =
@@ -259,7 +269,7 @@ applyWalletCashflows ws cfs = foldM applyOne ws cfs
             Left err   -> Left err
             Right acc' -> Right (walletDeposit receiver cur amt acc')
 
--- ─── Valor neto ───────────────────────────────────────────────────────────────
+-- Valor neto
 
 toBaseValue :: (String -> Maybe Double) -> Amount -> Either EvalError Double
 toBaseValue oracle (Amount v cur) =

@@ -427,7 +427,7 @@ Cada comando del REPL tiene un alias corto que permite invocarlo más rápidamen
 \texttt{:setfecha <YYYY-MM-DD>} & \texttt{:sf} & Cambiar fecha de evaluación \\
 \texttt{:historial} & \texttt{:hi} & Ver historial de ejecuciones \\
 \texttt{:reporte [<archivo.html>]} & \texttt{:r} & Exportar reporte HTML completo \\
-\texttt{:ast-svg <contrato> > <archivo>} & \texttt{:svg} & Exportar AST del contrato a SVG \\
+\texttt{:ast-svg <contrato> \texttt{ '>'} <archivo>} & \texttt{:svg} & Exportar AST del contrato a SVG \\
 \texttt{:quit} & \texttt{:q} & Salir del intérprete \\
 \texttt{:help} o \texttt{:?} & \texttt{:h} & Mostrar ayuda \\
 \bottomrule
@@ -820,7 +820,7 @@ De esta manera, una expresión como \texttt{(one USD and give one EUR) or zero} 
 
 \subsection{Exportación y visualización}
 
-El sistema ofrece dos principales opciones en cuento a la exportación y visualización, las cuales son un \textbf{reporte HTML} completo y un archivo SVG para una mejor \textbf{visualización del AST}. Una decisión personal fue solo usar SVG para el AST y no para el reporte HTML por una razón simple: el uso del formato de vectores SVG implica muchas líneas de código referentes al cálculo de coordenadas, lo cual hace el código difícilmente legible. Por lo que para las estadísticas mostradas en el reporte HTML, las cuales son modelables con HTML\texttt{+}CSS puro, se decidió sacrificar un poco la calidad del gráfico a costa de mejorar la legibilidad del código. 
+El sistema ofrece dos principales opciones en cuanto a la exportación y visualización, las cuales son un \textbf{reporte HTML} completo y un archivo SVG (de sus siglas \textbf{Scalable Vector Graphics}) para una mejor \textbf{visualización del AST}. El archivo SVG se genera mediante la librería \textbf{Graphviz}. Una decisión personal fue evitar lo máximo posible el uso del formato SVG directamente en el código HTML por una simple razón: este formato introduce muchas líneas de código referentes al cálculo de coordenadas, lo cual hace el mismo difícilmente legible. Para las estadísticas mostradas en el reporte HTML, pudimos modelar los gráficos necesarios con HTML\texttt{+}CSS puro (a costa de perder un gráfico de evolución temporal de billeteras). En lo que respecta a la visualización del AST, la librería Graphviz hace el trabajo del cálculo de coordenadas por nosotros.
 
 \subsubsection{Reporte HTML}
 
@@ -848,7 +848,7 @@ Cada tipo de combinador tiene un color distintivo: azul (\texttt{and}), rojo (\t
 
 Al delegar el layout a Graphviz, el código de \texttt{ExportarAST.hs} se reduce a la conversión del AST a DOT y a la invocación del proceso externo, eliminando la necesidad de implementar manualmente el cálculo de posiciones y el renderizado SVG.
 
-\subsubsection{Gráfico de barras HTML+CSS}
+\subsubsection{Gráfico de barras}
 
 Cada entrada del historial en el reporte HTML incluye un gráfico de barras bidireccionales implementado enteramente con HTML y CSS, compuesto por dos partes:
 

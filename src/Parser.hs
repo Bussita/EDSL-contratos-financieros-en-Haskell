@@ -13,7 +13,7 @@ import Text.Parsec.Char (digit, char)
 import Types
 import AST
 
--- ─── Lexer ────────────────────────────────────────────────────────────────────
+-- Lexer
 
 lexer :: T.TokenParser ()
 lexer = T.makeTokenParser emptyDef
@@ -38,7 +38,7 @@ reservedOp = T.reservedOp lexer
 whiteSpace = T.whiteSpace lexer
 semi       = T.semi       lexer
 
--- ─── Comandos ─────────────────────────────────────────────────────────────────
+-- Comandos
 
 parserComm :: Parser Comm
 parserComm = chainl1 parserSingleComm (semi >> return Seq)
@@ -99,7 +99,7 @@ parserSetFecha = do
 parserEvalComm :: Parser Comm
 parserEvalComm = Run <$> parserContract
 
--- ─── Contratos ────────────────────────────────────────────────────────────────
+-- Contratos
 
 parserContract :: Parser Contract
 parserContract = chainl1 parserTerm (reserved "or" >> return Or)
@@ -135,7 +135,7 @@ parserTruncate = do
   c <- parserPrefix
   return (Truncate t c)
 
--- | if <cond> then <contrato> else <contrato>
+-- if <cond> then <contrato> else <contrato>
 parserIf :: Parser Contract
 parserIf = do
   reserved "if"
@@ -163,7 +163,7 @@ parserOne = do
     Just (cur :: Currency) -> return (One cur)
     Nothing -> fail ("'" ++ c ++ "' no es una moneda válida (USD, EUR, ARS, GBP).")
 
--- ─── Observables booleanos ────────────────────────────────────────────────────
+-- Observables booleanos
 -- Gramática: <obs> <op> <obs>
 -- donde <op> es >, <, >=, <=, ==
 
@@ -182,7 +182,7 @@ parserBoolOp =
   <|> (reservedOp ">"        >> return Gt)
   <|> (reservedOp "<"        >> return Lt)
 
--- ─── Fechas ───────────────────────────────────────────────────────────────────
+-- Fechas
 
 parserTime :: Parser Date
 parserTime = do
@@ -194,7 +194,7 @@ parserTime = do
   whiteSpace
   return (fromGregorian (read y) (read m) (read d))
 
--- ─── Observables numéricos ────────────────────────────────────────────────────
+-- Observables numéricos
 
 parserObservable :: Parser (Obs Double)
 parserObservable = chainl1 parserMultDiv op

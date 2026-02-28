@@ -1,5 +1,6 @@
 module PrettyPrinter where
 
+import Data.List (intercalate)
 import Data.Time (Day)
 import qualified Data.Map as Map
 import Data.Map (Map)
@@ -7,7 +8,7 @@ import Data.Map (Map)
 import AST
 import Types
 
--- ─── Contratos ────────────────────────────────────────────────────────────────
+-- Contratos
 
 ppContract :: Contract -> String
 ppContract = ppContractPrec 0
@@ -30,7 +31,6 @@ ppContractPrec p (Give c)    = parensIf (p > 3) $ "give "    ++ ppContractPrec 3
 ppContractPrec p (Scale o c) = parensIf (p > 3) $ "scale "   ++ ppObs o ++ " " ++ ppContractPrec 3 c
 ppContractPrec p (Truncate d c) = parensIf (p > 3) $ "truncate " ++ ppDate d ++ " " ++ ppContractPrec 3 c
 
--- | if <cond> then <c1> else <c2>
 ppContractPrec p (If cond c1 c2) =
   parensIf (p > 3) $
     "if " ++ ppObsBool cond
@@ -54,7 +54,7 @@ infixPrec (And _ _)  = 1
 infixPrec (Then _ _) = 2
 infixPrec _          = 4
 
--- ─── Observables booleanos ────────────────────────────────────────────────────
+-- Observables booleanos
 
 ppObsBool :: ObsBool -> String
 ppObsBool (Gt  a b) = ppObs a ++ " > "  ++ ppObs b
@@ -63,7 +63,7 @@ ppObsBool (Gte a b) = ppObs a ++ " >= " ++ ppObs b
 ppObsBool (Lte a b) = ppObs a ++ " <= " ++ ppObs b
 ppObsBool (Eq  a b) = ppObs a ++ " == " ++ ppObs b
 
--- ─── Observables numéricos ────────────────────────────────────────────────────
+-- Observables numéricos
 
 ppObs :: Show a => Obs a -> String
 ppObs = ppObsPrec 0
@@ -78,7 +78,7 @@ ppObsPrec p (Mul a b) = parensIf (p > 1) $ ppObsPrec 1 a ++ " * " ++ ppObsPrec 2
 ppObsPrec p (Div a b) = parensIf (p > 1) $ ppObsPrec 1 a ++ " / " ++ ppObsPrec 2 b
 ppObsPrec p (Neg a)   = parensIf (p > 1) $ "-" ++ ppObsPrec 2 a
 
--- ─── Comandos ─────────────────────────────────────────────────────────────────
+-- Comandos
 
 ppComm :: Comm -> String
 ppComm (Assign name c)         = "let " ++ name ++ " = " ++ ppContract c
@@ -90,7 +90,7 @@ ppComm (Sign name party)       = "sign " ++ name ++ " " ++ party
 ppComm (Execute name)          = "execute " ++ name
 ppComm (SetFecha d)            = "setfecha " ++ ppDate d
 
--- ─── Cashflows ────────────────────────────────────────────────────────────────
+-- Cashflows
 
 ppCashflow :: Cashflow -> String
 ppCashflow cf =
@@ -108,7 +108,7 @@ ppCashflows cfs =
       sep    = replicate (length header) '-'
   in  unlines (header : sep : map ppCashflow cfs)
 
--- ─── Historial ────────────────────────────────────────────────────────────────
+-- Historial
 
 ppHistorial :: [HistorialEntry] -> String
 ppHistorial [] = "(sin ejecuciones registradas)"
@@ -120,7 +120,7 @@ ppHistorialEntry h =
   ++ "  (" ++ hPartyA h ++ " / " ++ hPartyB h ++ ")\n"
   ++ unlines (map (("    " ++) . ppCashflow) (hCashflows h))
 
--- ─── Billeteras ───────────────────────────────────────────────────────────────
+-- Billeteras
 
 ppWallets :: Wallets -> String
 ppWallets ws
@@ -141,12 +141,12 @@ ppWallet ws party =
     Nothing  -> "  " ++ party ++ ": (sin billetera)"
     Just bal ->
       let rows = map ppBalEntry (Map.toList bal)
-      in  unlines $ ("  [" ++ party ++ "]") : ("  " ++ replicate 30 '-') : rows
+      in  intercalate "\n" $ ("  [" ++ party ++ "]") : ("  " ++ replicate 30 '-') : rows
 
 ppBalEntry :: (Currency, Double) -> String
 ppBalEntry (cur, bal) = "    " ++ padR 6 (ppCurrency cur) ++ showDouble bal
 
--- ─── Contratos pendientes ─────────────────────────────────────────────────────
+-- Contratos pendientes
 
 ppPendings :: Map String PendingContract -> String
 ppPendings store
@@ -164,14 +164,14 @@ ppPending (name, pc) =
       ++ "     " ++ pcPartyA pc ++ " " ++ statusA
       ++ "  |  " ++ pcPartyB pc ++ " " ++ statusB
 
--- ─── Errores ──────────────────────────────────────────────────────────────────
+-- Errores
 
 ppError :: EvalError -> String
 ppError DivByZero      = "ERROR (DivByZero): división por cero"
 ppError (UnknownObs s) = "ERROR (UnknownObs): observable desconocido '" ++ s ++ "'"
 ppError (EvalMsg s)    = "ERROR (EvalMsg): " ++ s
 
--- ─── Primitivas ───────────────────────────────────────────────────────────────
+-- Primitivas
 
 ppCurrency :: Currency -> String
 ppCurrency USD = "USD"
@@ -195,4 +195,4 @@ showDouble x
   | otherwise                               = show x
 
 padR :: Int -> String -> String
-padR n s = s ++ replicate (max 0 (n - length s)) ' '
+padR n s = s ++ replicate (max 0 (n - length s)) ' ' -- pone una cantidad de espacios dependiendo del largo del string

@@ -31,7 +31,7 @@ data EvalError
   | EvalMsg String
   deriving (Show, Eq)
 
--- | Entorno de solo lectura que los contratos consultan durante la evaluación.
+-- Entorno de solo lectura que los contratos consultan durante la evaluación.
 -- Se pasa vía ReaderT en la mónada Interp.
 data Env = Env
   { fechaHoy    :: Date
@@ -40,14 +40,14 @@ data Env = Env
   , contraparte :: PartyId
   }
 
--- | Saldos de todas las partes: (PartyId, (Currency, monto)).
+-- Saldos de todas las partes: (PartyId, (Currency, monto)).
 type Wallets = Map PartyId (Map Currency Double)
 
--- | Estado de firma de un contrato pendiente.
+-- Estado de firma de un contrato pendiente.
 data SignatureStatus = Pending | Signed deriving (Show, Eq)
 
--- | Una entrada en el historial de ejecuciones.
---   Se registra cada vez que `execute` termina exitosamente.
+-- Una entrada en el historial de ejecuciones.
+-- Se registra cada vez que `execute` termina exitosamente.
 data HistorialEntry = HistorialEntry
   { hNombre    :: String       -- nombre del contrato ejecutado
   , hFecha     :: Day          -- fecha de ejecución (fechaHoy del Env)
@@ -57,8 +57,8 @@ data HistorialEntry = HistorialEntry
   , hWallets   :: Wallets      -- estado de billeteras DESPUÉS de la ejecución
   } deriving (Show, Eq, Generic)
 
--- | Snapshot del estado de las billeteras en un momento dado.
---   Se registra con cada setfecha y execute para poder graficar la evolución.
+-- Snapshot del estado de las billeteras en un momento dado.
+-- Se registra con cada setfecha y execute para poder graficar la evolución.
 data WalletSnapshot = WalletSnapshot
   { snapFecha   :: Day
   , snapWallets :: Wallets

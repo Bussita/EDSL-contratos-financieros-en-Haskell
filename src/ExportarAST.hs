@@ -8,9 +8,7 @@ import Control.Exception (try, IOException)
 import AST
 import PrettyPrinter
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Directorio de salida
--- ═══════════════════════════════════════════════════════════════════════════════
 
 outputDir :: FilePath
 outputDir = "output"
@@ -22,13 +20,11 @@ ensureOutputPath path = do
   return fullPath
   where fullPath = outputDir ++ "/" ++ path
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Diagrama de árbol SVG del AST (via Graphviz)
--- ═══════════════════════════════════════════════════════════════════════════════
 
--- | Genera un SVG con el árbol del AST usando Graphviz `dot` y lo escribe
---   en el archivo indicado. Si Graphviz no está instalado, guarda el DOT
---   como fallback.
+-- Genera un SVG con el árbol del AST usando Graphviz `dot` y lo escribe
+-- en el archivo indicado. Si Graphviz no está instalado, guarda el DOT
+-- como fallback.
 exportarASTSVG :: Contract -> FilePath -> IO String
 exportarASTSVG c path = do
   fullPath <- ensureOutputPath path
@@ -43,11 +39,9 @@ exportarASTSVG c path = do
       writeFile dotPath dot
       return $ "Graphviz no encontrado. DOT guardado en " ++ dotPath
 
--- ═══════════════════════════════════════════════════════════════════════════════
 -- Generación de DOT
--- ═══════════════════════════════════════════════════════════════════════════════
 
--- | Convierte un Contract en un string DOT completo.
+-- Convierte un Contract en un string DOT completo.
 contractToDot :: Contract -> String
 contractToDot c =
   let (_, nodes, edges) = buildDot 0 c
@@ -61,7 +55,7 @@ contractToDot c =
       , "}"
       ]
 
--- ─── Recorrido recursivo del AST ─────────────────────────────────────────────
+-- Recorrido recursivo del AST
 -- Devuelve (próximoId, declaraciones de nodos, declaraciones de aristas).
 -- El nodo raíz de cada llamada siempre tiene id = n.
 
@@ -102,29 +96,29 @@ buildBin n label color c1 c2 =
   in  (n2, mkNode n label color ++ ns1 ++ ns2
       , mkEdge n (n+1) ++ mkEdge n n1 ++ es1 ++ es2)
 
--- ─── Primitivas DOT ──────────────────────────────────────────────────────────
+-- Primitivas DOT
 
--- | Nodo con una sola línea de texto.
+-- Nodo con una sola línea de texto.
 mkNode :: Int -> String -> String -> String
 mkNode i label color =
   "  n" ++ show i ++ " [label=\"" ++ escDot label
   ++ "\" fillcolor=\"" ++ color ++ "\"];\n"
 
--- | Nodo con dos líneas (título + detalle en tamaño menor).
+-- Nodo con dos líneas (título + detalle en tamaño menor).
 mkNode2 :: Int -> String -> String -> String -> String
 mkNode2 i title detail color =
   "  n" ++ show i ++ " [label=<" ++ escHtml title
   ++ "<br/><font point-size=\"9\">" ++ escHtml detail
   ++ "</font>> fillcolor=\"" ++ color ++ "\"];\n"
 
--- | Arista dirigida (visualmente sin flecha).
+-- Arista dirigida (visualmente sin flecha).
 mkEdge :: Int -> Int -> String
 mkEdge from to =
   "  n" ++ show from ++ " -> n" ++ show to ++ ";\n"
 
--- ─── Escape ──────────────────────────────────────────────────────────────────
+-- Escape
 
--- | Escapa caracteres para strings DOT entre comillas dobles.
+-- Escapa caracteres para strings DOT entre comillas dobles.
 escDot :: String -> String
 escDot = concatMap esc
   where
@@ -132,7 +126,7 @@ escDot = concatMap esc
     esc '\\' = "\\\\"
     esc c    = [c]
 
--- | Escapa caracteres para HTML labels en DOT.
+-- Escapa caracteres para HTML labels en DOT.
 escHtml :: String -> String
 escHtml = concatMap esc
   where
