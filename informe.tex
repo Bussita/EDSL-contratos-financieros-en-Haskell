@@ -460,7 +460,7 @@ El trabajo se encuentra dividido en los siguientes directorios principales:
     \item \textbf{Evaluator.hs.} Implementa el evaluador de contratos, observables, observables booleanos y comandos (incluyendo \texttt{deposit}, \texttt{propose}, \texttt{sign}, \texttt{execute}, \texttt{setfecha}), además de las operaciones de billetera.
     \item \textbf{PrettyPrinter.hs.} Pretty printer con niveles de precedencia, formateo de cashflows, billeteras, historial, pendientes y errores.
     \item \textbf{Exportar.hs.} Genera reportes HTML autocontenidos con barras de cashflows en HTML+CSS y tablas de evolución temporal de billeteras.
-    \item \textbf{ExportarAST.hs.} Genera diagramas de árbol SVG del AST de contratos, incluyendo el layout jerárquico con posicionamiento automático de nodos y coloreado por tipo de combinador.
+    \item \textbf{ExportarAST.hs.} Genera diagramas de árbol SVG del AST de contratos, convirtiendo el árbol a formato DOT y delegando el layout y renderizado a Graphviz\cite{graphviz}.
 \end{itemize}
 
 \textbf{app/.} Contiene un único archivo, \texttt{Main.hs}, donde se encuentra el REPL interactivo construido con Haskeline. En este archivo se definen los comandos del intérprete, el manejo de estado (\texttt{InterpState} + \texttt{Env}), la carga de archivos \texttt{.fin}, y la interfaz de usuario.
@@ -835,19 +835,18 @@ El comando \texttt{:reporte} genera un archivo HTML autocontenido (sin dependenc
 
 Todo el CSS está inline en el HTML, lo que lo hace completamente portable.
 
-\subsubsection{SVG del AST}
+\subsubsection{SVG del AST (via Graphviz)}
 
-El comando \texttt{:ast-svg} genera un diagrama SVG\cite{svg} del árbol de sintaxis abstracta de un contrato. La generación se realiza en tres fases:
+El comando \texttt{:ast-svg} genera un diagrama SVG del árbol de sintaxis abstracta de un contrato, utilizando Graphviz\cite{graphviz} para el layout y renderizado. La generación se realiza en dos fases:
 
 \begin{enumerate}[nosep]
-    \item \textbf{Conversión a árbol de layout.} El tipo \texttt{Contract} se convierte a un árbol intermedio \texttt{ASTTree}, donde cada nodo almacena una etiqueta de texto y una lista de hijos. Los nodos hoja (\texttt{zero}, \texttt{one}, \texttt{Var}) no tienen hijos; los unarios (\texttt{give}, \texttt{scale}, \texttt{truncate}) tienen un hijo; y los binarios (\texttt{and}, \texttt{or}, \texttt{then}, \texttt{if}) tienen dos.
-    \item \textbf{Cálculo de posiciones.} Se calcula recursivamente el ancho de cada subárbol como el máximo entre el ancho de un nodo individual (100px) y la suma de los anchos de sus hijos más los gaps de separación (20px). Luego, la función \texttt{layoutTree} asigna coordenadas $(x, y)$ a cada nodo: el padre se centra horizontalmente sobre el espacio ocupado por sus hijos, y los hijos se distribuyen uniformemente debajo usando \texttt{scanl} para calcular posiciones incrementales.
-    \item \textbf{Renderizado.} Cada nodo se dibuja como un rectángulo redondeado (\texttt{<rect rx='6'>}) con texto centrado, y las conexiones padre-hijo como líneas (\texttt{<line>}). Las aristas se renderizan primero para que queden debajo de los nodos visualmente.
+    \item \textbf{Generación de DOT.} La función \texttt{buildDot} recorre recursivamente el \texttt{Contract} y genera un string en formato DOT (el lenguaje de descripción de grafos de Graphviz). Cada nodo del AST recibe un identificador único (\texttt{n0}, \texttt{n1}, \dots) asignado mediante un contador que se propaga a través de la recursión. Para nodos con información adicional (como el observable en \texttt{scale} o la fecha en \texttt{truncate}), se utilizan HTML labels con dos líneas de texto de diferente tamaño.
+    \item \textbf{Renderizado externo.} El string DOT se envía al programa \texttt{dot} (de Graphviz) vía \texttt{readProcess}, que calcula automáticamente las posiciones de los nodos y genera el SVG final. Si Graphviz no está instalado, se guarda el archivo DOT como fallback.
 \end{enumerate}
 
 Cada tipo de combinador tiene un color distintivo: azul (\texttt{and}), rojo (\texttt{give}), verde (\texttt{one}), naranja (\texttt{then}), púrpura (\texttt{or}), cyan (\texttt{scale}), verde oscuro (\texttt{truncate}), magenta (\texttt{if}) y gris (\texttt{zero}).
 
-El tamaño total del SVG se calcula dinámicamente a partir del ancho del árbol y su profundidad, garantizando que el diagrama se ajuste exactamente al contenido sin espacio desperdiciado.
+Al delegar el layout a Graphviz, el código de \texttt{ExportarAST.hs} se reduce a la conversión del AST a DOT y a la invocación del proceso externo, eliminando la necesidad de implementar manualmente el cálculo de posiciones y el renderizado SVG.
 
 \subsubsection{Gráfico de barras HTML+CSS}
 
@@ -946,6 +945,10 @@ Hackage. Documentación de mtl (Monad Transformer Library).
 W3C. \textit{Scalable Vector Graphics (SVG) 2}.
 W3C Candidate Recommendation, 2018.
 \\\url{https://www.w3.org/TR/SVG2/}
+
+\bibitem{graphviz}
+AT\&T Labs Research. \textit{Graphviz --- Graph Visualization Software}.
+\\\url{https://graphviz.org/}
 
 \bibitem{lattice}
 J. Cox, S. Ross, M. Rubinstein.

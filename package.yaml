@@ -23,6 +23,7 @@ dependencies:
 - exceptions
 - directory
 - filepath
+- process
 
 ghc-options:
 - -Wall

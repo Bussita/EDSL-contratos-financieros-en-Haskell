@@ -17,8 +17,8 @@ Trabajo Práctico Final — Análisis de Lenguajes de Programación (ALP), LCC, 
 - **Sistema de firmas duales:** `propose`, `sign`, `execute` — los contratos requieren la firma de ambas partes antes de ejecutarse.
 - **Fecha mutable:** `setfecha` permite avanzar en el tiempo para simular escenarios temporales.
 - **Exportación:**
-  - Reporte HTML autocontenido con gráficos SVG embebidos (barras de cashflows, evolución temporal de billeteras, diagramas de AST).
-  - Exportación de AST a archivo SVG independiente.
+  - Reporte HTML autocontenido con barras de cashflows en HTML+CSS y tablas de evolución temporal.
+  - Exportación de AST a archivo SVG independiente (via Graphviz).
 - **REPL interactivo** con Haskeline, carga de archivos `.fin`, y 15 ejemplos incluidos.
 
 ---
@@ -28,6 +28,11 @@ Trabajo Práctico Final — Análisis de Lenguajes de Programación (ALP), LCC, 
 ### Requisitos
 
 - [Stack](https://docs.haskellstack.org/) (GHC 9.6.6 se descarga automáticamente).
+- [Graphviz](https://graphviz.org/) (para la exportación de AST a SVG). En Ubuntu/Debian:
+  ```bash
+  sudo apt install graphviz
+  ```
+  Si Graphviz no está instalado, el comando `:ast-svg` guardará el archivo en formato DOT en lugar de SVG.
 
 ### Compilar
 
@@ -121,7 +126,8 @@ Reporte HTML exportado a reporte.html
 │   ├── Parser.hs            # Parser con Parsec
 │   ├── Evaluator.hs         # Evaluador de contratos, observables y comandos
 │   ├── PrettyPrinter.hs     # Pretty printer con precedencias
-│   └── Exportar.hs          # HTML con SVG embebido, AST SVG, evolución temporal
+│   ├── Exportar.hs          # Reporte HTML (barras CSS, tablas de evolución)
+│   └── ExportarAST.hs       # Diagrama de AST via Graphviz
 ├── Ejemplos/                 # 15 archivos .fin de ejemplo
 │   ├── basico.fin
 │   ├── bono_cupon.fin
@@ -148,6 +154,8 @@ Reporte HTML exportado a reporte.html
 | `mtl` / `transformers` | Stack de mónadas |
 | `haskeline` | REPL interactivo con edición de línea |
 | `exceptions` | Manejo de excepciones en Haskeline |
+| `directory` / `filepath` | Creación de directorios de salida |
+| `process` | Invocación de Graphviz (`dot`) para generar SVG |
 
 ---
 
