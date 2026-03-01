@@ -8,6 +8,7 @@ import System.FilePath (takeDirectory)
 
 import Types
 import AST
+import PendingContracts
 import Monads
 import PrettyPrinter
 

@@ -6,6 +6,7 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 
 import AST
+import PendingContracts
 import Types
 
 -- Contratos

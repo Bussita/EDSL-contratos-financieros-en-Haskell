@@ -453,7 +453,8 @@ El trabajo se encuentra dividido en los siguientes directorios principales:
 
 \textbf{src/.} Contiene el código fuente principal del lenguaje:
 \begin{itemize}[nosep]
-    \item \textbf{AST.hs.} Define los tipos de datos algebraicos del lenguaje: \texttt{Contract}, \texttt{Obs}, \texttt{ObsBool}, \texttt{Comm} y \texttt{PendingContract}.
+    \item \textbf{AST.hs.} Define los tipos de datos algebraicos del lenguaje: \texttt{Contract}, \texttt{Obs}, \texttt{ObsBool} y \texttt{Comm}.
+    \item \textbf{PendingContracts.hs.} Define el tipo \texttt{PendingContract} y las operaciones asociadas: creación, firma y verificación de contratos pendientes.
     \item \textbf{Types.hs.} Define los tipos base: \texttt{Currency}, \texttt{Amount}, \texttt{Cashflow}, \texttt{Env}, \texttt{Wallets}, \texttt{HistorialEntry}, \texttt{WalletSnapshot} y \texttt{EvalError}.
     \item \textbf{Monads.hs.} Define la mónada \texttt{Interp} (un stack de \texttt{StateT}, \texttt{ReaderT}, \texttt{WriterT} y \texttt{Either} de \texttt{mtl}) junto con el estado mutable \texttt{InterpState} y las funciones de acceso.
     \item \textbf{Parser.hs.} Implementa el parser del lenguaje utilizando Parsec, con gramática de precedencias para contratos, observables numéricos, observables booleanos y todos los comandos.
@@ -909,8 +910,16 @@ El sistema de comandos distingue entre directivas (prefijadas con \texttt{:}) y 
 
 Cada comando del REPL define uno o más alias (por ejemplo, \texttt{:q} para \texttt{:quit}, \texttt{:e} para \texttt{:eval}, \texttt{:l} para \texttt{:load}). La resolución de comandos utiliza un esquema de dos fases: primero se busca una coincidencia exacta contra los alias definidos, y solo si no se encuentra se recurre a coincidencia por prefijo (\texttt{isPrefixOf}). Este diseño evita ambigüedades; por ejemplo, \texttt{:q} resuelve exactamente a \texttt{:quit} sin confundirse con \texttt{:quote}, a pesar de que \texttt{:q} es prefijo de ambos.
 
+% ═══════════════════════════════════════════════════════════════════════════════\section{Conclusión}
 % ═══════════════════════════════════════════════════════════════════════════════
-\section{Bibliografía}
+
+En este trabajo implementamos un EDSL en Haskell para modelar, evaluar y simular contratos financieros, tomando como base los combinadores propuestos por Peyton Jones, Eber y Seward. El resultado es un lenguaje composicional con un REPL interactivo que permite definir contratos de forma declarativa, evaluarlos para obtener flujos de caja concretos, y simular escenarios completos con billeteras, firmas duales y evolución temporal.
+
+A lo largo del desarrollo pudimos observar cómo las abstracciones de Haskell se adecuan naturalmente a este dominio: los tipos algebraicos permiten representar la estructura del AST de forma clara y extensible; los transformadores de mónadas proveen una forma modular de combinar estado mutable, entorno de solo lectura, acumulación de resultados y manejo de errores; y las type classes de \texttt{mtl} simplifican el acceso a cada efecto sin necesidad de lifts explícitos en la mayoría de los casos.
+
+El sistema presenta limitaciones respecto al paper original ---principalmente la ausencia de los combinadores \texttt{when} y \texttt{until}, y la evaluación simplificada de \texttt{or} sin considerar el valor temporal del dinero--- pero las extensiones incorporadas (billeteras con verificación de saldo, sistema de propuestas y firmas, simulación temporal con \texttt{setfecha}, exportación a reportes HTML y diagramas SVG del AST) ofrecen una herramienta funcional para explorar y visualizar contratos financieros de forma interactiva.
+
+% ═══════════════════════════════════════════════════════════════════════════════\section{Bibliografía}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 \begin{thebibliography}{9}

@@ -7,8 +7,7 @@ import qualified Text.Parsec.Token as T
 import Text.Parsec.Language (emptyDef)
 import Text.Read (readMaybe)
 import Data.Char (toUpper)
-import Data.Time (Day, fromGregorian)
-import Text.Parsec.Char (digit, char)
+import Data.Time (fromGregorian)
 
 import Types
 import AST
@@ -29,13 +28,28 @@ lexer = T.makeTokenParser emptyDef
   , T.caseSensitive   = False
   }
 
+reserved :: String -> Parser ()
 reserved   = T.reserved   lexer
+
+integer :: Parser Integer
 integer    = T.integer    lexer
+
+float :: Parser Double
 float      = T.float      lexer
+
+parens :: Parser a -> Parser a
 parens     = T.parens     lexer
+
+identifier :: Parser String
 identifier = T.identifier lexer
+
+reservedOp :: String -> Parser ()
 reservedOp = T.reservedOp lexer
+
+whiteSpace :: Parser ()
 whiteSpace = T.whiteSpace lexer
+
+semi :: Parser String
 semi       = T.semi       lexer
 
 -- Comandos
@@ -243,6 +257,6 @@ parserNumber = try float <|> (fromIntegral <$> integer)
 parserCurrency :: Parser Currency
 parserCurrency = do
   s <- identifier
-  case readMaybe (map toUpper s) of
+  case readMaybe (map toUpper s) of -- toUpper para que se acepte "usd", "USD", "UsD", etc...
     Just (cur :: Currency) -> return cur
     Nothing -> fail ("'" ++ s ++ "' no es una moneda válida (USD, EUR, ARS, GBP).")

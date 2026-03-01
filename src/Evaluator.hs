@@ -6,6 +6,7 @@ import qualified Data.Set as Set
 
 import Types
 import AST
+import PendingContracts
 import Monads
 
 -- Sustitución de variables
@@ -126,8 +127,10 @@ evalContract (Truncate limitDate c) = do
   today <- getFechaHoy
   if today > limitDate
     then return ()
-    else censorFlows (filter (\x -> fecha x <= limitDate)) (evalContract c)
-
+    else censorFlows (filter (\x -> fecha x <= limitDate)) (evalContract c) 
+-- el filter no sirve de nada actualmente (ya que la evaluación de one se hace con fecha hoy
+-- y en el if ya chequeamos que hoy <=limitDate)
+-- Sin embargo si extendiesemos el eDSL con evolución temporal esto sí sería de esta forma, y actualmente no cambia la semántica (es lo mismo que evalContract c)
 evalContract (If cond c1 c2) = do
   result <- evalBool cond
   if result then evalContract c1 else evalContract c2
@@ -275,14 +278,15 @@ toBaseValue :: (String -> Maybe Double) -> Amount -> Either EvalError Double
 toBaseValue oracle (Amount v cur) =
   case cur of
     USD -> Right v
-    _   -> case oracle (show cur ++ "_USD") of
+    _   -> case oracle (show cur ++ "_USD") of -- chequea si hay una conversion en el oraculo
              Just rate -> Right (v * rate)
              Nothing   -> Left (EvalMsg $ "No hay cotización para " ++ show cur)
 
+-- Convierte la lista de cashflows en un valor neto en USD, se usa en la evaluación de or para ver cual es más conveniente.
 netValue :: (String -> Maybe Double) -> PartyId -> [Cashflow] -> Either EvalError Double
 netValue oracle party cfs = fmap sum (mapM cf cfs)
   where
     cf flow
-      | hacia flow == party = toBaseValue oracle (cantidad flow)
-      | desde flow == party = fmap negate (toBaseValue oracle (cantidad flow))
-      | otherwise           = Right 0
+      | hacia flow == party = toBaseValue oracle (cantidad flow) -- cantidad que entra
+      | desde flow == party = fmap negate (toBaseValue oracle (cantidad flow)) -- cantidad que sale
+      | otherwise           = Right 0 -- no estoy involucrado

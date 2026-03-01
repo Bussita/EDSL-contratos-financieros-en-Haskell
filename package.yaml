@@ -36,6 +36,7 @@ library:
   source-dirs: src
   exposed-modules:
     - AST
+    - PendingContracts
     - Parser
     - PrettyPrinter
     - Evaluator

@@ -15,6 +15,7 @@ import           Data.Time           (getCurrentTime, utctDay)
 import qualified Data.Map.Strict as Map
 
 import AST
+import PendingContracts
 import Types
 import Parser
 import PrettyPrinter

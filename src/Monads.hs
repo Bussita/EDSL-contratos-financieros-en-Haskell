@@ -11,6 +11,7 @@ import Data.Map (Map)
 import Data.Time (Day)
 import Types
 import AST
+import PendingContracts
 
 -- Estado mutable del intérprete
 
@@ -38,10 +39,15 @@ emptyInterpState today = InterpState
   , isFechaHoy  = today
   }
 
--- ─── Mónada Interp ────────────────────────────────────────────────────────────
---
+-- Mónada Interp
+
+{- Para recordar un poco los transformadores:
+  StateT s m a = StateT { runStateT :: s -> m (a,s)} modela estado mutable
+  ReaderT r m a = ReaderT { runReaderT :: r -> m a} modela estado inmutable (el entorno)
+  WriterT w m a = WriterT { runWriterT :: m (a,w)} permite acumular escrituras
+-}
 -- Tipo desplegado:
---   Interp a ≅ InterpState → Env → Either EvalError ((a, InterpState), [Cashflow])
+--   Interp a ~ InterpState -> Env -> Either EvalError ((a, InterpState), [Cashflow])
 
 type Interp = StateT InterpState (ReaderT Env (WriterT [Cashflow] (Either EvalError)))
 
@@ -52,7 +58,7 @@ runInterp :: Interp a
 runInterp m st env =
   runWriterT (runReaderT (runStateT m st) env)
 
--- ─── Primitivas ───────────────────────────────────────────────────────────────
+-- Primitivas (la librería mtl hace lifts implicitos)
 
 askEnv :: Interp Env
 askEnv = ask
@@ -86,7 +92,7 @@ censorFlows f m = do
       lift $ lift $ tell (f cfs)
       return a
 
--- ─── Accesores ────────────────────────────────────────────────────────────────
+-- Accesores
 
 getContracts :: Interp ContractStore
 getContracts = isContracts <$> get
