@@ -17,7 +17,7 @@ ppContract = ppContractPrec 0
 ppContractPrec :: Int -> Contract -> String
 ppContractPrec _ Zero      = "zero"
 ppContractPrec _ (One c)   = "one " ++ ppCurrency c
-ppContractPrec _ (Var x)   = x -- El PP no expande los alias de contrato
+ppContractPrec _ (Var x)   = x
 
 ppContractPrec p (Or c1 c2) =
   parensIf (p > 0) $ ppMaybeParens 0 c1 ++ " or " ++ ppMaybeParens 0 c2

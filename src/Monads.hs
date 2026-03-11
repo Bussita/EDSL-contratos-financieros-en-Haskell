@@ -58,7 +58,7 @@ runInterp :: Interp a
 runInterp m st env =
   runWriterT (runReaderT (runStateT m st) env)
 
--- Primitivas (la librería mtl hace lifts implicitos)
+-- Primitivas (la librería mtl hace lifts implicitos dentro de la instancia)
 
 askEnv :: Interp Env
 askEnv = ask
